@@ -1,17 +1,65 @@
-from healthcare_sdk import register_components, Adapter, HealthCareUsecase, Validator, Decoder, AiHelper, Normalizer, HealthCareStorage
+import os
+
+from healthcare_sdk import (
+    Adapter,
+    AiHelper,
+    Decoder,
+    HealthCareStorage,
+    HealthCareUsecase,
+    Normalizer,
+    PostgreSqlStorage,
+    Validator,
+    register_components,
+)
+
+from adapters import MllpConnector
+from tools import (
+    GeminiAiHelperStrategy,
+    H7FhirDecoder,
+    HealthcareNormalizer,
+    Hl7Validator,
+    Hl7V2Decoder,
+)
+from usecases import (
+    CommitHealthCareMsgUsecase,
+    ProcessHealthCareMsgUsecase,
+    VisualizeHealthCareMsgUsecase,
+)
 
 
 
 
 def main():
-    adapters : list[Adapter] = []
-    usecases : list[HealthCareUsecase] = []
-    validators : list[Validator] = []
-    decoders : list[Decoder] = []
-    ai_helpers : list[AiHelper] = []
-    normalizers : list[Normalizer] = []
-    storage : list[HealthCareStorage] = []
-    instance = register_components(adapters=adapters, usecases=usecases, validators=validators, decoders=decoders, ai_helpers=ai_helpers, normalizers=normalizers, storage=storage)
+    postgres_user = os.getenv("POSTGRES_USER")
+    postgres_password = os.getenv("POSTGRES_PASSWORD")
+    postgres_host = os.getenv("POSTGRES_HOST")
+    postgres_port = os.getenv("POSTGRES_PORT")
+    postgres_db = os.getenv("POSTGRES_DB")
+    postgres_dsn = (
+        f"postgresql://{postgres_user}:{postgres_password}"
+        f"@{postgres_host}:{postgres_port}/{postgres_db}"
+    )
+
+    adapters: list[Adapter] = [MllpConnector()]
+    usecases: list[HealthCareUsecase] = [
+        ProcessHealthCareMsgUsecase(),
+        VisualizeHealthCareMsgUsecase(),
+        CommitHealthCareMsgUsecase(),
+    ]
+    validators: list[Validator] = [Hl7Validator()]
+    decoders: list[Decoder] = [H7FhirDecoder(), Hl7V2Decoder()]
+    ai_helpers: list[AiHelper] = [GeminiAiHelperStrategy()]
+    normalizers: list[Normalizer] = [HealthcareNormalizer()]
+    storages: list[HealthCareStorage] = [PostgreSqlStorage(postgres_dsn)]
+    instance = register_components(
+        adapters=adapters,
+        usecases=usecases,
+        validators=validators,
+        decoders=decoders,
+        aihelpers=ai_helpers,
+        normalizers=normalizers,
+        storages=storages,
+    )
     
 
 
