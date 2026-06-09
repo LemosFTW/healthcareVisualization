@@ -6,4 +6,5 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "healthcare-sdk==0.2.0",
+    "sqlalchemy>=2.0",
 ]
