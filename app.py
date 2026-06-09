@@ -10,6 +10,7 @@ from healthcare_sdk import (
     PostgreSqlStorage,
     Validator,
     register_components,
+    RestController
 )
 
 from adapters import MllpConnector
@@ -60,7 +61,8 @@ def main():
         normalizers=normalizers,
         storages=storages,
     )
-    
+    # rest_controller = RestController()
+    # rest_controller.add_endpoint("/process", instance.get_usecase(ProcessHealthCareMsgUsecase))
 
 
 
