@@ -134,7 +134,7 @@ class MllpConnector(Adapter):
             version = "2.5"
 
         import datetime
-        now = datetime.datetime.utcnow().strftime("%Y%m%d%H%M%S")
+        now = datetime.datetime.now(datetime.UTC).strftime("%Y%m%d%H%M%S")
 
         ack_text = (
             f"MSH|^~\\&|{receiving_app}|{receiving_facility}|{sending_app}|{sending_facility}"

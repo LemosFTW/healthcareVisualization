@@ -26,6 +26,7 @@ class HealthcareMessageNormalizer(NormalizerTemplate):
 
         patient_id = (pid.get("patient_identifier_list", "") or pid.get("patient_id", "")).strip()
 
+        # HL7 OBX observations
         clinical_observations = [
             {
                 "identifier": obx.get("observation_identifier", ""),
@@ -38,6 +39,22 @@ class HealthcareMessageNormalizer(NormalizerTemplate):
             for obx in obx_list
             if isinstance(obx, dict)
         ]
+
+        # FHIR Observation resources (Bundle entry or standalone) — supplement HL7 OBX
+        if not clinical_observations:
+            fhir_resources = decoded_payload.get("resources", [])
+            if isinstance(fhir_resources, list):
+                for res in fhir_resources:
+                    if isinstance(res, dict) and res.get("resourceType") == "Observation":
+                        vq = res.get("valueQuantity") or {}
+                        clinical_observations.append({
+                            "identifier": f"{res.get('id', '')} - {(res.get('code') or {}).get('text', '')}",
+                            "value": str(vq.get("value", "")),
+                            "units": vq.get("unit", ""),
+                            "reference_range": "",
+                            "abnormal_flags": "",
+                            "status": res.get("status", ""),
+                        })
 
         normalized: Dict[str, Any] = {
             "patient": {
