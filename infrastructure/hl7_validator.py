@@ -18,10 +18,11 @@ _PID_REQUIRED: List[Tuple[str, str]] = [
 
 
 class Hl7Validator(ValidatorTemplate):
-    """Validates decoded HL7 v2.3 payloads for minimum required fields.
+    """Validates decoded payloads for minimum required fields.
 
+    For HL7 v2 payloads (MSH present): validates required MSH/PID fields.
+    For non-HL7 payloads (FHIR resourceType present): passes without HL7 checks.
     Returns ValidationResult with one ErrorDetail per missing or empty field.
-    PID segment fields are only checked when PID is present in the payload.
     """
 
     def validate(self, decoded_payload: dict) -> ValidationResult:
@@ -38,8 +39,11 @@ class Hl7Validator(ValidatorTemplate):
 
         errors: List[ErrorDetail] = []
 
-        # MSH is mandatory in every HL7 v2 message
         if "MSH" not in decoded_payload:
+            # FHIR resources (and other non-HL7 formats) don't have MSH — pass through.
+            # Only HL7 payloads that lack MSH entirely are considered invalid here.
+            if "resourceType" in decoded_payload:
+                return ValidationResult(is_valid=True, errors=[])
             errors.append(ErrorDetail(
                 code="missing_segment",
                 message="MSH segment is required but absent from decoded payload",
