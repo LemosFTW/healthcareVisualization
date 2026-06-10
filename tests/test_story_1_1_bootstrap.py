@@ -1,10 +1,24 @@
 """Story 1.1: Project Setup & Bootstrap — acceptance tests."""
 import os
+import sys
+import types
 import pytest
 from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 
 BASE = Path(__file__).parent.parent
+
+
+def _genai_mock_ctx():
+    genai_mock = MagicMock()
+    genai_mock.GenerativeModel.return_value = MagicMock()
+    google_pkg = types.ModuleType("google")
+    google_pkg.generativeai = genai_mock
+    return patch.dict(
+        sys.modules,
+        {"google": google_pkg, "google.generativeai": genai_mock},
+    )
 
 # AC3: Folder structure exists
 def test_clean_architecture_layers_exist():
@@ -25,15 +39,16 @@ def test_register_components_succeeds_with_valid_components():
     mllp = MllpConnector()
     decoder = Hl7V2Decoder()
 
-    components = register_components(
-        adapters=[mllp],
-        usecases=[],
-        validators=[Hl7Validator()],
-        decoders=[decoder, FhirDecoder()],
-        aihelpers=[GeminiAiHelperStrategy()],
-        normalizers=[HealthcareNormalizer()],
-        storages=[storage],
-    )
+    with _genai_mock_ctx(), patch.dict(os.environ, {"GEMINI_API_KEY": "test-key"}):
+        components = register_components(
+            adapters=[mllp],
+            usecases=[],
+            validators=[Hl7Validator()],
+            decoders=[decoder, FhirDecoder()],
+            aihelpers=[GeminiAiHelperStrategy()],
+            normalizers=[HealthcareNormalizer()],
+            storages=[storage],
+        )
     assert components is not None
 
 
@@ -62,8 +77,9 @@ def test_rest_controller_has_health_endpoint():
 # AC1: bootstrap() completes without error
 def test_bootstrap_function_runs_without_error():
     os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
-    from app import bootstrap
-    components, usecase, mllp = bootstrap()
+    with _genai_mock_ctx(), patch.dict(os.environ, {"GEMINI_API_KEY": "test-key"}):
+        from app import bootstrap
+        components, usecase, mllp = bootstrap()
     assert components is not None
     assert usecase is not None
     assert mllp is not None

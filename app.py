@@ -18,7 +18,7 @@ from healthcare_sdk import (
 from healthcare_sdk.usecases import DefaultHealthCareUsecase
 
 from infrastructure import (
-    GeminiAiHelperStrategy,
+    GeminiAiHelper,
     FhirDecoder,
     HealthcareNormalizer,
     Hl7Validator,
@@ -47,7 +47,7 @@ def bootstrap():
     decoder = Hl7V2Decoder()
     validator = Hl7Validator()
     normalizer = HealthcareNormalizer()
-    ai_helper = GeminiAiHelperStrategy()
+    ai_helper = GeminiAiHelper()
     fhir_decoder = FhirDecoder()
     mllp_connector = MllpConnector()
 

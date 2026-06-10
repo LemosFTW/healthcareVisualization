@@ -1,8 +1,10 @@
 """Tests for Story 1.1: Project Setup & Bootstrap."""
 import os
+import sys
+import types
 import pytest
 from fastapi.testclient import TestClient
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from healthcare_sdk import (
     ComponentRegistrationError,
@@ -21,6 +23,18 @@ from infrastructure import (
 from transport import MllpConnector
 
 
+def _genai_mock_ctx():
+    """Context manager that patches google.generativeai with a no-op mock."""
+    genai_mock = MagicMock()
+    genai_mock.GenerativeModel.return_value = MagicMock()
+    google_pkg = types.ModuleType("google")
+    google_pkg.generativeai = genai_mock
+    return patch.dict(
+        sys.modules,
+        {"google": google_pkg, "google.generativeai": genai_mock},
+    )
+
+
 class _InvalidComponent:
     """Does not implement any SDK protocol — used to trigger ComponentRegistrationError."""
     pass
@@ -37,30 +51,14 @@ def test_health_endpoint_returns_200():
 
 def test_register_components_succeeds_with_valid_components():
     """register_components must not raise when all components satisfy SDK contracts."""
-    storage_mock = MagicMock()
-    storage_mock.__class__ = type(
-        "MockStorage",
-        (),
-        {
-            "save": lambda self, e: None,
-            "read": lambda self, q: {},
-            "update": lambda self, q, d: True,
-            "delete": lambda self, q: True,
-        },
-    )
-
-    engine_mock = MagicMock()
-    from healthcare_sdk import PostgreSqlStorage
-    storage = PostgreSqlStorage.__new__(PostgreSqlStorage)
-    storage._engine = engine_mock
-
-    components = register_components(
-        adapters=[MllpConnector()],
-        validators=[Hl7Validator()],
-        decoders=[Hl7V2Decoder(), FhirDecoder()],
-        aihelpers=[GeminiAiHelperStrategy()],
-        normalizers=[HealthcareNormalizer()],
-    )
+    with _genai_mock_ctx(), patch.dict(os.environ, {"GEMINI_API_KEY": "test-key"}):
+        components = register_components(
+            adapters=[MllpConnector()],
+            validators=[Hl7Validator()],
+            decoders=[Hl7V2Decoder(), FhirDecoder()],
+            aihelpers=[GeminiAiHelperStrategy()],
+            normalizers=[HealthcareNormalizer()],
+        )
     assert components is not None
 
 
