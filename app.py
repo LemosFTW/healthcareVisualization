@@ -20,6 +20,7 @@ from healthcare_sdk.usecases import DefaultHealthCareUsecase
 from infrastructure import (
     GeminiAiHelper,
     FhirDecoder,
+    HealthcareDecoderRouter,
     HealthcareNormalizer,
     Hl7Validator,
     Hl7V2Decoder,
@@ -44,26 +45,28 @@ def bootstrap():
     """Compose all concrete components and validate contracts via register_components."""
     engine = build_engine()
     storage = PostgreSqlStorage(engine)
-    decoder = Hl7V2Decoder()
+    hl7_decoder = Hl7V2Decoder()
+    fhir_decoder = FhirDecoder()
+    router = HealthcareDecoderRouter({"hl7v2": hl7_decoder, "fhir": fhir_decoder})
+
     validator = Hl7Validator()
     ai_helper = GeminiAiHelper()
     normalizer = HealthcareNormalizer()
     normalizer.aiHelper = ai_helper  # wire AI helper for anomaly detection
-    fhir_decoder = FhirDecoder()
     mllp_connector = MllpConnector()
 
     components = register_components(
         adapters=[mllp_connector],
         usecases=[],
         validators=[validator],
-        decoders=[decoder, fhir_decoder],
+        decoders=[router],
         aihelpers=[ai_helper],
         normalizers=[normalizer],
         storages=[storage],
     )
 
     usecase = DefaultHealthCareUsecase(
-        decoder=decoder,
+        decoder=router,
         validator=validator,
         normalizer=normalizer,
         storage=storage,
