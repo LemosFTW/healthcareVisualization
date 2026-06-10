@@ -1,0 +1,109 @@
+"""REST handler for POST /messages — processes a raw message through the full pipeline."""
+from __future__ import annotations
+import uuid
+from typing import Any, Dict, List, Optional
+
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel
+
+from healthcare_sdk.contracts import MessageEnvelope, RawMessage, STATUS_ERROR
+
+
+class MessageRequest(BaseModel):
+    protocol: str
+    raw_payload: str
+    id: Optional[str] = None
+    metadata: Optional[Dict[str, Any]] = None
+    message_type: Optional[str] = None
+
+
+def _serialize_envelope(envelope: MessageEnvelope) -> Dict[str, Any]:
+    normalized = envelope.normalized_payload or {}
+    warnings: List[str] = (
+        normalized.get("warnings", []) if isinstance(normalized, dict) else []
+    )
+    return {
+        "id": envelope.id,
+        "protocol": envelope.protocol,
+        "message_type": envelope.message_type,
+        "status": envelope.status,
+        "decoded_payload": envelope.decoded_payload,
+        "normalized_payload": envelope.normalized_payload,
+        "warnings": warnings,
+        "errors": [
+            {
+                "code": e.code,
+                "message": e.message,
+                "stage": e.stage,
+                "context": e.context,
+            }
+            for e in envelope.errors
+        ],
+    }
+
+
+def _serialize_stored(record: Dict[str, Any]) -> Dict[str, Any]:
+    """Normalize a storage read() dict for JSON serialization."""
+    normalized = record.get("normalized_payload") or {}
+    warnings: List[str] = (
+        normalized.get("warnings", []) if isinstance(normalized, dict) else []
+    )
+    created_at = record.get("created_at")
+    return {
+        "id": record.get("id"),
+        "protocol": record.get("protocol"),
+        "message_type": record.get("message_type"),
+        "status": record.get("status"),
+        "raw_payload": record.get("raw_payload"),
+        "decoded_payload": record.get("decoded_payload"),
+        "normalized_payload": normalized,
+        "warnings": warnings,
+        "errors": record.get("errors") or [],
+        "created_at": created_at.isoformat() if hasattr(created_at, "isoformat") else str(created_at or ""),
+    }
+
+
+def create_query_message_handler(storage):
+    """Return an async FastAPI handler for GET /messages/{id} bound to *storage*."""
+
+    async def handler(id: str) -> JSONResponse:
+        record = storage.read({"id": id})
+        if not record:
+            return JSONResponse(
+                status_code=404,
+                content={
+                    "type": "about:blank",
+                    "title": "Not Found",
+                    "status": 404,
+                    "detail": f"Message with id '{id}' was not found",
+                },
+            )
+        return JSONResponse(content=_serialize_stored(record), status_code=200)
+
+    return handler
+
+
+def create_process_message_handler(usecase):
+    """Return an async FastAPI handler for POST /messages bound to *usecase*.
+
+    Error envelopes (decode/validate failures) are explicitly persisted here because
+    the SDK's DefaultHealthCareUsecase only calls storage.save() on the happy path.
+    """
+
+    async def handler(body: MessageRequest) -> JSONResponse:
+        raw = RawMessage(
+            id=body.id or str(uuid.uuid4()),
+            protocol=body.protocol,
+            raw_payload=body.raw_payload,
+            metadata=body.metadata or {},
+            message_type=body.message_type,
+        )
+        envelope = usecase.execute(raw)
+        if envelope.status == STATUS_ERROR:
+            try:
+                usecase.storage.save(envelope)
+            except Exception:
+                pass  # best-effort: don't mask pipeline errors with storage errors
+        return JSONResponse(content=_serialize_envelope(envelope), status_code=200)
+
+    return handler

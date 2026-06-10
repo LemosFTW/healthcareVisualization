@@ -1,103 +1,109 @@
 import os
-import uuid
 
-from fastapi import Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 from sqlalchemy import create_engine
 
 from healthcare_sdk import (
     Adapter,
     AiHelper,
+    ComponentRegistrationError,
     Decoder,
     HealthCareStorage,
     HealthCareUsecase,
     Normalizer,
-    PostgreSqlStorage,
-    RawMessage,
     Validator,
     register_components,
     RestController,
 )
+from healthcare_sdk.usecases import DefaultHealthCareUsecase
 
-from adapters import MllpConnector
-from tools import (
-    GeminiAiHelperStrategy,
-    H7FhirDecoder,
+from infrastructure import (
+    GeminiAiHelper,
+    FhirDecoder,
+    HealthcareDecoderRouter,
     HealthcareNormalizer,
     Hl7Validator,
     Hl7V2Decoder,
+    PostgreSqlStorage,
 )
-from usecases import (
-    CommitHealthCareMsgUsecase,
-    ProcessHealthCareMsgUsecase,
-    VisualizeHealthCareMsgUsecase,
-)
+from transport import MllpConnector
+from transport.messages_handler import create_process_message_handler, create_query_message_handler
 
 
-def _make_handler(usecase: HealthCareUsecase):
-    async def handler(request: Request):
-        body = await request.json()
-        raw_msg = RawMessage(
-            id=body.get("id", str(uuid.uuid4())),
-            protocol=body.get("protocol", "HL7v2"),
-            raw_payload=body.get("raw_payload", ""),
-            metadata=body.get("metadata", {}),
-            message_type=body.get("message_type"),
+def _register_exception_handlers(app) -> None:
+    """Add RFC 9457 Problem Details handler for request validation errors."""
+
+    @app.exception_handler(RequestValidationError)
+    async def _validation_error_handler(request, exc: RequestValidationError):
+        return JSONResponse(
+            status_code=422,
+            content={
+                "type": "about:blank",
+                "title": "Unprocessable Content",
+                "status": 422,
+                "detail": str(exc),
+            },
         )
-        envelope = usecase.execute(raw_msg)
-        return {
-            "id": envelope.id,
-            "status": envelope.status,
-            "protocol": envelope.protocol,
-            "message_type": envelope.message_type,
-            "metadata": envelope.metadata,
-        }
-    return handler
+
+
+def build_engine() -> object:
+    user = os.getenv("POSTGRES_USER")
+    password = os.getenv("POSTGRES_PASSWORD")
+    host = os.getenv("POSTGRES_HOST")
+    port = os.getenv("POSTGRES_PORT", "5432")
+    db = os.getenv("POSTGRES_DB")
+    if all([user, password, host, db]):
+        dsn = f"postgresql://{user}:{password}@{host}:{port}/{db}"
+    else:
+        dsn = os.getenv("DATABASE_URL", "sqlite:///healthcare.db")
+    return create_engine(dsn)
+
+
+def bootstrap():
+    """Compose all concrete components and validate contracts via register_components."""
+    engine = build_engine()
+    storage = PostgreSqlStorage(engine)
+    hl7_decoder = Hl7V2Decoder()
+    fhir_decoder = FhirDecoder()
+    router = HealthcareDecoderRouter({"hl7v2": hl7_decoder, "fhir": fhir_decoder})
+
+    validator = Hl7Validator()
+    ai_helper = GeminiAiHelper()
+    normalizer = HealthcareNormalizer()
+    normalizer.aiHelper = ai_helper  # wire AI helper for anomaly detection
+    mllp_connector = MllpConnector()
+
+    components = register_components(
+        adapters=[mllp_connector],
+        usecases=[],
+        validators=[validator],
+        decoders=[router],
+        aihelpers=[ai_helper],
+        normalizers=[normalizer],
+        storages=[storage],
+    )
+
+    usecase = DefaultHealthCareUsecase(
+        decoder=router,
+        validator=validator,
+        normalizer=normalizer,
+        storage=storage,
+    )
+
+    return components, usecase, mllp_connector
 
 
 def main():
-    postgres_user = os.getenv("POSTGRES_USER")
-    postgres_password = os.getenv("POSTGRES_PASSWORD")
-    postgres_host = os.getenv("POSTGRES_HOST")
-    postgres_port = os.getenv("POSTGRES_PORT")
-    postgres_db = os.getenv("POSTGRES_DB")
-    postgres_dsn = (
-        f"postgresql://{postgres_user}:{postgres_password}"
-        f"@{postgres_host}:{postgres_port}/{postgres_db}"
-    )
-
-    engine = create_engine(postgres_dsn)
-
-    process_usecase = ProcessHealthCareMsgUsecase()
-    visualize_usecase = VisualizeHealthCareMsgUsecase()
-    commit_usecase = CommitHealthCareMsgUsecase()
-
-    adapters: list[Adapter] = [MllpConnector()]
-    usecases: list[HealthCareUsecase] = [
-        process_usecase,
-        visualize_usecase,
-        commit_usecase,
-    ]
-    validators: list[Validator] = [Hl7Validator()]
-    decoders: list[Decoder] = [H7FhirDecoder(), Hl7V2Decoder()]
-    ai_helpers: list[AiHelper] = [GeminiAiHelperStrategy()]
-    normalizers: list[Normalizer] = [HealthcareNormalizer()]
-    storages: list[HealthCareStorage] = [PostgreSqlStorage(engine)]
-
-    register_components(
-        adapters=adapters,
-        usecases=usecases,
-        validators=validators,
-        decoders=decoders,
-        aihelpers=ai_helpers,
-        normalizers=normalizers,
-        storages=storages,
-    )
+    _components, usecase, _mllp = bootstrap()
 
     rest_controller = RestController()
-    rest_controller.add_endpoint("/process", "POST", _make_handler(process_usecase))
-    rest_controller.add_endpoint("/visualize", "POST", _make_handler(visualize_usecase))
-    rest_controller.add_endpoint("/commit", "POST", _make_handler(commit_usecase))
-    rest_controller.executeServer(port=int(os.getenv("PORT", "8000")))
+    _register_exception_handlers(rest_controller.app)
+    rest_controller.add_endpoint("/messages", "POST", create_process_message_handler(usecase))
+    rest_controller.add_endpoint("/messages/{id}", "GET", create_query_message_handler(usecase.storage))
+
+    rest_port = int(os.getenv("PORT", "8000"))
+    rest_controller.executeServer(port=rest_port)
 
 
 if __name__ == "__main__":

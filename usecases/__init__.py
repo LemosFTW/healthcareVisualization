@@ -1,9 +1,3 @@
-from .commit_healthcare_msg import CommitHealthCareMsgUsecase
-from .process_healthcare_msg import ProcessHealthCareMsgUsecase
-from .visualize_healthcare_msg import VisualizeHealthCareMsgUsecase
+from healthcare_sdk.usecases import DefaultHealthCareUsecase
 
-__all__ = [
-    "CommitHealthCareMsgUsecase",
-    "ProcessHealthCareMsgUsecase",
-    "VisualizeHealthCareMsgUsecase",
-]
+__all__ = ["DefaultHealthCareUsecase"]
