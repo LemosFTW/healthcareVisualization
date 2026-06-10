@@ -1,5 +1,7 @@
 import os
 
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 from sqlalchemy import create_engine
 
 from healthcare_sdk import (
@@ -26,6 +28,23 @@ from infrastructure import (
     PostgreSqlStorage,
 )
 from transport import MllpConnector
+from transport.messages_handler import create_process_message_handler
+
+
+def _register_exception_handlers(app) -> None:
+    """Add RFC 9457 Problem Details handler for request validation errors."""
+
+    @app.exception_handler(RequestValidationError)
+    async def _validation_error_handler(request, exc: RequestValidationError):
+        return JSONResponse(
+            status_code=422,
+            content={
+                "type": "about:blank",
+                "title": "Unprocessable Content",
+                "status": 422,
+                "detail": str(exc),
+            },
+        )
 
 
 def build_engine() -> object:
@@ -76,9 +95,12 @@ def bootstrap():
 
 
 def main():
-    _components, _usecase, _mllp = bootstrap()
+    _components, usecase, _mllp = bootstrap()
 
     rest_controller = RestController()
+    _register_exception_handlers(rest_controller.app)
+    rest_controller.add_endpoint("/messages", "POST", create_process_message_handler(usecase))
+
     rest_port = int(os.getenv("PORT", "8000"))
     rest_controller.executeServer(port=rest_port)
 
