@@ -10,7 +10,6 @@ from healthcare_sdk import (
     HealthCareStorage,
     HealthCareUsecase,
     Normalizer,
-    PostgreSqlStorage,
     Validator,
     register_components,
     RestController,
@@ -24,6 +23,7 @@ from infrastructure import (
     HealthcareNormalizer,
     Hl7Validator,
     Hl7V2Decoder,
+    PostgreSqlStorage,
 )
 from transport import MllpConnector
 
