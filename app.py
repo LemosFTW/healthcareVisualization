@@ -1,4 +1,5 @@
 import os
+import threading
 
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
@@ -29,6 +30,7 @@ from infrastructure import (
 )
 from transport import MllpConnector
 from transport.messages_handler import create_process_message_handler, create_query_message_handler
+from transport.mllp_pipeline import create_mllp_pipeline_loop
 
 
 def _register_exception_handlers(app) -> None:
@@ -72,7 +74,8 @@ def bootstrap():
     ai_helper = GeminiAiHelper()
     normalizer = HealthcareNormalizer()
     normalizer.aiHelper = ai_helper  # wire AI helper for anomaly detection
-    mllp_connector = MllpConnector()
+    mllp_port = int(os.getenv("MLLP_PORT", "2575"))
+    mllp_connector = MllpConnector(port=mllp_port)
 
     components = register_components(
         adapters=[mllp_connector],
@@ -95,7 +98,12 @@ def bootstrap():
 
 
 def main():
-    _components, usecase, _mllp = bootstrap()
+    _components, usecase, mllp = bootstrap()
+
+    # Start MLLP server and pipeline loop in background daemon threads
+    mllp.start_in_background()
+    pipeline_loop = create_mllp_pipeline_loop(mllp, usecase, usecase.storage)
+    threading.Thread(target=pipeline_loop, daemon=True, name="mllp-pipeline").start()
 
     rest_controller = RestController()
     _register_exception_handlers(rest_controller.app)
