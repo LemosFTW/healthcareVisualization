@@ -6,7 +6,7 @@ from typing import Any, Dict, Optional
 from sqlalchemy import JSON, DateTime, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, Session
 
-from healthcare_sdk.contracts import MessageEnvelope
+from healthcare_sdk.contracts import MessageEnvelope, STATUS_NORMALIZED, STATUS_STORED
 from healthcare_sdk.repositories.base import Base
 
 
@@ -84,6 +84,10 @@ class PostgreSqlStorage:
     def save(self, envelope: MessageEnvelope) -> str:
         with Session(self._engine) as session:
             log = _HealthcareMessageLog.from_envelope(envelope)
+            # The SDK calls save() before setting STATUS_STORED on the envelope.
+            # Upgrade normalized → stored here so the persisted record reflects final state.
+            if log.status == STATUS_NORMALIZED:
+                log.status = STATUS_STORED
             session.merge(log)
             session.commit()
             return log.id

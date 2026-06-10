@@ -28,7 +28,7 @@ from infrastructure import (
     PostgreSqlStorage,
 )
 from transport import MllpConnector
-from transport.messages_handler import create_process_message_handler
+from transport.messages_handler import create_process_message_handler, create_query_message_handler
 
 
 def _register_exception_handlers(app) -> None:
@@ -100,6 +100,7 @@ def main():
     rest_controller = RestController()
     _register_exception_handlers(rest_controller.app)
     rest_controller.add_endpoint("/messages", "POST", create_process_message_handler(usecase))
+    rest_controller.add_endpoint("/messages/{id}", "GET", create_query_message_handler(usecase.storage))
 
     rest_port = int(os.getenv("PORT", "8000"))
     rest_controller.executeServer(port=rest_port)
