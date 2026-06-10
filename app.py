@@ -46,8 +46,9 @@ def bootstrap():
     storage = PostgreSqlStorage(engine)
     decoder = Hl7V2Decoder()
     validator = Hl7Validator()
-    normalizer = HealthcareNormalizer()
     ai_helper = GeminiAiHelper()
+    normalizer = HealthcareNormalizer()
+    normalizer.aiHelper = ai_helper  # wire AI helper for anomaly detection
     fhir_decoder = FhirDecoder()
     mllp_connector = MllpConnector()
 
