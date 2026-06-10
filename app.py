@@ -28,12 +28,15 @@ from transport import MllpConnector
 
 
 def build_engine() -> object:
-    user = os.getenv("POSTGRES_USER", "postgres")
-    password = os.getenv("POSTGRES_PASSWORD", "postgres")
-    host = os.getenv("POSTGRES_HOST", "localhost")
+    user = os.getenv("POSTGRES_USER")
+    password = os.getenv("POSTGRES_PASSWORD")
+    host = os.getenv("POSTGRES_HOST")
     port = os.getenv("POSTGRES_PORT", "5432")
-    db = os.getenv("POSTGRES_DB", "healthcare")
-    dsn = f"postgresql://{user}:{password}@{host}:{port}/{db}"
+    db = os.getenv("POSTGRES_DB")
+    if all([user, password, host, db]):
+        dsn = f"postgresql://{user}:{password}@{host}:{port}/{db}"
+    else:
+        dsn = os.getenv("DATABASE_URL", "sqlite:///healthcare.db")
     return create_engine(dsn)
 
 
