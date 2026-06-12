@@ -1,5 +1,5 @@
+import multiprocessing
 import os
-import threading
 
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
@@ -97,13 +97,23 @@ def bootstrap():
     return components, usecase, mllp_connector
 
 
-def main():
+def run_mllp_worker() -> None:
+    """Processo isolado: MLLP server + pipeline. Memória completamente separada do REST."""
     _components, usecase, mllp = bootstrap()
-
-    # Start MLLP server and pipeline loop in background daemon threads
     mllp.start_in_background()
     pipeline_loop = create_mllp_pipeline_loop(mllp, usecase, usecase.storage)
-    threading.Thread(target=pipeline_loop, daemon=True, name="mllp-pipeline").start()
+    pipeline_loop()
+
+
+def main():
+    mllp_process = multiprocessing.Process(
+        target=run_mllp_worker,
+        daemon=True,
+        name="mllp-worker",
+    )
+    mllp_process.start()
+
+    _components, usecase, _mllp = bootstrap()
 
     rest_controller = RestController()
     _register_exception_handlers(rest_controller.app)
@@ -115,4 +125,5 @@ def main():
 
 
 if __name__ == "__main__":
+    multiprocessing.freeze_support()
     main()

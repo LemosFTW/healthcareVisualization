@@ -218,13 +218,17 @@ def test_mllp_failure_does_not_affect_rest():
 
 # AC1: app.py main() architecture — structural test
 def test_main_registers_both_channels():
-    """app.py main() wires both MllpConnector and REST endpoint before serving."""
+    """app.py launches MLLP worker as isolated process and REST in main process."""
     import app as app_module
     import inspect
 
     main_src = inspect.getsource(app_module.main)
+    worker_src = inspect.getsource(app_module.run_mllp_worker)
 
-    assert "start_in_background" in main_src, "MLLP server not started in main()"
-    assert "pipeline" in main_src, "MLLP pipeline not started in main()"
+    assert "multiprocessing.Process" in main_src, "MLLP worker not launched as Process in main()"
+    assert "run_mllp_worker" in main_src, "run_mllp_worker not referenced in main()"
     assert "executeServer" in main_src, "REST server not started in main()"
     assert "add_endpoint" in main_src, "REST endpoints not registered in main()"
+
+    assert "start_in_background" in worker_src, "MLLP server not started in run_mllp_worker()"
+    assert "pipeline" in worker_src, "MLLP pipeline not started in run_mllp_worker()"
