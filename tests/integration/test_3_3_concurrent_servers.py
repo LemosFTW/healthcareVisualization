@@ -1,13 +1,7 @@
-"""Tests for Story 3.3: Concurrent REST and MLLP Servers.
-
-Verifies that both channels start on separate ports simultaneously,
-process messages independently, and that failure in one channel
-does not affect the other.
-"""
+"""Story 3.3 — Concurrent REST and MLLP Servers."""
 import socket
 import threading
 import time
-
 import pytest
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
@@ -19,19 +13,11 @@ from healthcare_sdk import RestController
 from healthcare_sdk.contracts import STATUS_STORED
 from healthcare_sdk.usecases import DefaultHealthCareUsecase
 
-from infrastructure import (
-    FhirDecoder,
-    HealthcareDecoderRouter,
-    HealthcareNormalizer,
-    Hl7Validator,
-    Hl7V2Decoder,
-    PostgreSqlStorage,
-)
+from infrastructure import FhirDecoder, HealthcareDecoderRouter, HealthcareNormalizer, Hl7Validator, Hl7V2Decoder, PostgreSqlStorage
 from transport import MllpConnector
 from transport.messages_handler import create_process_message_handler, create_query_message_handler
 from transport.mllp_pipeline import create_mllp_pipeline_loop
 from transport.mllp_connector import MLLP_START, MLLP_END
-
 
 VALID_HL7 = (
     r"MSH|^~\&|SendApp|SendFac|RecApp|RecFac|20230601120000||ADT^A01|MSG001|P|2.3"
@@ -46,40 +32,26 @@ def _get_free_port() -> int:
 
 
 def _make_engine():
-    return create_engine(
-        "sqlite:///:memory:",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
+    return create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False}, poolclass=StaticPool)
 
 
 def _build_system():
-    """Build a minimal REST+MLLP system on a free test port."""
     engine = _make_engine()
     storage = PostgreSqlStorage(engine)
     router = HealthcareDecoderRouter({"hl7v2": Hl7V2Decoder(), "fhir": FhirDecoder()})
-    validator = Hl7Validator()
-    normalizer = HealthcareNormalizer()
-
     usecase = DefaultHealthCareUsecase(
-        decoder=router, validator=validator, normalizer=normalizer, storage=storage
+        decoder=router, validator=Hl7Validator(), normalizer=HealthcareNormalizer(), storage=storage
     )
-
     mllp_port = _get_free_port()
     mllp = MllpConnector(host="127.0.0.1", port=mllp_port)
-
     controller = RestController()
 
     @controller.app.exception_handler(RequestValidationError)
     async def _val_err(request, exc):
-        return JSONResponse(
-            status_code=422,
-            content={"type": "about:blank", "title": "Unprocessable Content", "status": 422, "detail": str(exc)},
-        )
+        return JSONResponse(status_code=422, content={"type": "about:blank", "title": "Unprocessable Content", "status": 422, "detail": str(exc)})
 
     controller.add_endpoint("/messages", "POST", create_process_message_handler(usecase))
     controller.add_endpoint("/messages/{id}", "GET", create_query_message_handler(storage))
-
     return usecase, mllp, mllp_port, controller, storage
 
 
@@ -112,49 +84,53 @@ def _send_mllp(host: str, port: int, payload: bytes, timeout: float = 2.0) -> by
     return response
 
 
-# AC1: Both servers listen on separate ports simultaneously
+@pytest.mark.p0
 def test_mllp_and_rest_both_accept_connections():
-    """MLLP server binds its port while REST TestClient is active — no conflict."""
+    """
+    Given both the MLLP server and the REST controller running simultaneously
+    When connections are made to each
+    Then both must accept connections without port conflicts
+    """
     usecase, mllp, mllp_port, controller, storage = _build_system()
-
     mllp.start_in_background()
     assert _wait_for_port("127.0.0.1", mllp_port), "MLLP port did not open in time"
-
     try:
         client = TestClient(controller.app, raise_server_exceptions=False)
-        health = client.get("/health")
-        assert health.status_code == 200
+        assert client.get("/health").status_code == 200
         assert _wait_for_port("127.0.0.1", mllp_port)
     finally:
         mllp.stop()
 
 
+@pytest.mark.p0
 def test_rest_processes_while_mllp_server_is_running():
-    """REST endpoint processes a message while MLLP server is active."""
+    """
+    Given a running MLLP server and pipeline loop
+    When POST /messages is called via the REST endpoint
+    Then the message must be processed and returned with status='stored'
+    """
     usecase, mllp, mllp_port, controller, storage = _build_system()
-
     mllp.start_in_background()
     pipeline_loop = create_mllp_pipeline_loop(mllp, usecase, storage)
     threading.Thread(target=pipeline_loop, daemon=True).start()
     _wait_for_port("127.0.0.1", mllp_port)
-
     try:
         client = TestClient(controller.app, raise_server_exceptions=False)
-        resp = client.post(
-            "/messages",
-            json={"protocol": "hl7v2", "raw_payload": VALID_HL7.decode("latin-1")},
-        )
+        resp = client.post("/messages", json={"protocol": "hl7v2", "raw_payload": VALID_HL7.decode("latin-1")})
         assert resp.status_code == 200
         assert resp.json()["status"] == STATUS_STORED
     finally:
         mllp.stop()
 
 
-# AC2: Each message processed independently without interference
+@pytest.mark.p0
 def test_mllp_and_rest_messages_processed_independently():
-    """Both channels process messages concurrently without interfering."""
+    """
+    Given both channels running concurrently
+    When one message is sent via MLLP and another via REST simultaneously
+    Then both must complete successfully without interfering with each other
+    """
     usecase, mllp, mllp_port, controller, storage = _build_system()
-
     mllp.start_in_background()
     pipeline_loop = create_mllp_pipeline_loop(mllp, usecase, storage)
     threading.Thread(target=pipeline_loop, daemon=True).start()
@@ -165,14 +141,7 @@ def test_mllp_and_rest_messages_processed_independently():
 
     def _send_rest():
         try:
-            resp = client.post(
-                "/messages",
-                json={
-                    "protocol": "hl7v2",
-                    "raw_payload": VALID_HL7.decode("latin-1"),
-                    "id": "rest-concurrent",
-                },
-            )
+            resp = client.post("/messages", json={"protocol": "hl7v2", "raw_payload": VALID_HL7.decode("latin-1"), "id": "rest-concurrent"})
             if resp.json()["status"] != STATUS_STORED:
                 errors.append(f"REST status={resp.json()['status']}")
         except Exception as exc:
@@ -189,36 +158,39 @@ def test_mllp_and_rest_messages_processed_independently():
     try:
         t1 = threading.Thread(target=_send_rest)
         t2 = threading.Thread(target=_send_mllp_msg)
-        t1.start()
-        t2.start()
-        t1.join(timeout=5.0)
-        t2.join(timeout=5.0)
+        t1.start(); t2.start()
+        t1.join(timeout=5.0); t2.join(timeout=5.0)
         assert not errors, f"Concurrent channel errors: {errors}"
     finally:
         mllp.stop()
 
 
-# AC2: MLLP failure does not affect REST
+@pytest.mark.p0
 def test_mllp_failure_does_not_affect_rest():
-    """Stopping the MLLP server does not interrupt REST processing."""
+    """
+    Given a running system where the MLLP server is then stopped
+    When POST /messages is called via the REST endpoint after MLLP stops
+    Then the REST endpoint must still process the message successfully
+    """
     usecase, mllp, mllp_port, controller, storage = _build_system()
-
     mllp.start_in_background()
     _wait_for_port("127.0.0.1", mllp_port)
-    mllp.stop()  # simulate MLLP channel failure
+    mllp.stop()
 
     client = TestClient(controller.app, raise_server_exceptions=False)
-    resp = client.post(
-        "/messages",
-        json={"protocol": "hl7v2", "raw_payload": VALID_HL7.decode("latin-1")},
-    )
+    resp = client.post("/messages", json={"protocol": "hl7v2", "raw_payload": VALID_HL7.decode("latin-1")})
     assert resp.status_code == 200
     assert resp.json()["status"] == STATUS_STORED
 
 
-# AC1: app.py main() architecture — structural test
+@pytest.mark.p0
 def test_main_registers_both_channels():
-    """app.py launches MLLP worker as isolated process and REST in main process."""
+    """
+    Given the app module
+    When inspecting main() and run_mllp_worker() source code
+    Then main() must launch a multiprocessing.Process with run_mllp_worker, register REST endpoints and start the REST server;
+    and run_mllp_worker() must start the MLLP server and pipeline
+    """
     import app as app_module
     import inspect
 

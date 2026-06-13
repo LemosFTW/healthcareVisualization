@@ -1,12 +1,10 @@
-"""Tests for Story 1.5: HealthcareMessageNormalizer with anomaly detection."""
+"""Story 1.5 — HealthcareMessageNormalizer with anomaly detection."""
 import pytest
 from unittest.mock import MagicMock
 
 from infrastructure.healthcare_normalizer import HealthcareMessageNormalizer
 from healthcare_sdk.errors import NormalizationError
 
-
-# Decoded payload matching Hl7V2Decoder output
 DECODED_PAYLOAD = {
     "MSH": {
         "encoding_characters": r"^~\&",
@@ -50,23 +48,29 @@ DECODED_PAYLOAD = {
 
 PAYLOAD_WITH_SUSPICIOUS_HR = {
     **DECODED_PAYLOAD,
-    "OBX": [
-        {
-            **DECODED_PAYLOAD["OBX"][0],
-            "observation_value": "0",   # heart rate of 0 is clinically suspicious
-            "abnormal_flags": "",
-        }
-    ],
+    "OBX": [{**DECODED_PAYLOAD["OBX"][0], "observation_value": "0", "abnormal_flags": ""}],
 }
 
 
+@pytest.mark.p0
 def test_normalizeData_returns_dict():
+    """
+    Given a valid decoded HL7v2 payload
+    When normalizeData() is called
+    Then the result must be a dict
+    """
     normalizer = HealthcareMessageNormalizer()
     result = normalizer.normalizeData(DECODED_PAYLOAD)
     assert isinstance(result, dict)
 
 
+@pytest.mark.p0
 def test_normalized_contains_patient_block():
+    """
+    Given a decoded payload with PID segment
+    When normalizeData() is called
+    Then the result must contain a 'patient' block with id, name, dob and sex
+    """
     normalizer = HealthcareMessageNormalizer()
     result = normalizer.normalizeData(DECODED_PAYLOAD)
     assert "patient" in result
@@ -77,7 +81,13 @@ def test_normalized_contains_patient_block():
     assert patient["sex"] == "M"
 
 
+@pytest.mark.p0
 def test_normalized_contains_identifiers_block():
+    """
+    Given a decoded payload with MSH segment
+    When normalizeData() is called
+    Then the result must contain an 'identifiers' block with message_control_id and app/facility
+    """
     normalizer = HealthcareMessageNormalizer()
     result = normalizer.normalizeData(DECODED_PAYLOAD)
     assert "identifiers" in result
@@ -87,14 +97,26 @@ def test_normalized_contains_identifiers_block():
     assert ids["sending_facility"] == "HOSP"
 
 
+@pytest.mark.p0
 def test_normalized_contains_message_type_and_datetime():
+    """
+    Given a decoded payload with message_type and datetime in MSH
+    When normalizeData() is called
+    Then both must be present at the top level of the result
+    """
     normalizer = HealthcareMessageNormalizer()
     result = normalizer.normalizeData(DECODED_PAYLOAD)
     assert result["message_type"] == "ORU^R01"
     assert result["datetime"] == "20230601120000"
 
 
+@pytest.mark.p0
 def test_normalized_contains_clinical_observations():
+    """
+    Given a decoded payload with one OBX segment
+    When normalizeData() is called
+    Then clinical_observations must contain one entry with identifier, value and units
+    """
     normalizer = HealthcareMessageNormalizer()
     result = normalizer.normalizeData(DECODED_PAYLOAD)
     assert "clinical_observations" in result
@@ -106,70 +128,103 @@ def test_normalized_contains_clinical_observations():
     assert obs[0]["units"] == "bpm"
 
 
+@pytest.mark.p0
 def test_no_ai_helper_returns_empty_warnings():
+    """
+    Given a normalizer with no aiHelper set
+    When normalizeData() is called
+    Then warnings must be an empty list
+    """
     normalizer = HealthcareMessageNormalizer()
-    # aiHelper is None by default
     result = normalizer.normalizeData(DECODED_PAYLOAD)
     assert "warnings" in result
     assert result["warnings"] == []
 
 
+@pytest.mark.p0
 def test_ai_helper_called_when_set():
+    """
+    Given a normalizer with a mocked aiHelper that returns 'NONE'
+    When normalizeData() is called
+    Then the aiHelper must be called once and warnings must be empty
+    """
     ai_mock = MagicMock()
     ai_mock.generateResponse.return_value = "NONE"
-
     normalizer = HealthcareMessageNormalizer()
     normalizer.aiHelper = ai_mock
-
     result = normalizer.normalizeData(DECODED_PAYLOAD)
     ai_mock.generateResponse.assert_called_once()
     assert result["warnings"] == []
 
 
+@pytest.mark.p0
 def test_anomaly_detected_adds_warning():
+    """
+    Given a normalizer with a mocked aiHelper that returns an ANOMALY response
+    When normalizeData() is called
+    Then one warning containing the anomaly description must be present
+    """
     ai_mock = MagicMock()
     ai_mock.generateResponse.return_value = "ANOMALY: HR^Heart Rate - Heart rate of 0 is clinically impossible"
-
     normalizer = HealthcareMessageNormalizer()
     normalizer.aiHelper = ai_mock
-
     result = normalizer.normalizeData(PAYLOAD_WITH_SUSPICIOUS_HR)
     assert len(result["warnings"]) == 1
     assert "Heart Rate" in result["warnings"][0]
 
 
+@pytest.mark.p0
 def test_multiple_anomalies_detected():
+    """
+    Given a mocked aiHelper that returns two ANOMALY lines
+    When normalizeData() is called
+    Then warnings must contain two entries
+    """
     ai_mock = MagicMock()
     ai_mock.generateResponse.return_value = (
         "ANOMALY: HR^Heart Rate - Heart rate of 0 is not viable\n"
         "ANOMALY: TEMP^Temperature - Temperature of 200 is incompatible with life"
     )
-
     normalizer = HealthcareMessageNormalizer()
     normalizer.aiHelper = ai_mock
-
     result = normalizer.normalizeData(DECODED_PAYLOAD)
     assert len(result["warnings"]) == 2
 
 
+@pytest.mark.p0
 def test_ai_helper_exception_returns_empty_warnings():
+    """
+    Given a mocked aiHelper that raises RuntimeError
+    When normalizeData() is called
+    Then warnings must be empty (exception must be swallowed)
+    """
     ai_mock = MagicMock()
     ai_mock.generateResponse.side_effect = RuntimeError("API down")
-
     normalizer = HealthcareMessageNormalizer()
     normalizer.aiHelper = ai_mock
-
     result = normalizer.normalizeData(DECODED_PAYLOAD)
     assert result["warnings"] == []
 
 
+@pytest.mark.p0
 def test_non_dict_payload_raises_normalization_error():
+    """
+    Given a non-dict value passed as payload
+    When normalizeData() is called
+    Then NormalizationError must be raised
+    """
     normalizer = HealthcareMessageNormalizer()
     with pytest.raises(NormalizationError):
         normalizer.normalizeData("not a dict")  # type: ignore[arg-type]
 
 
+@pytest.mark.p0
 def test_payload_without_pid_still_normalizes():
+    """
+    Given a decoded payload with only MSH and no PID segment
+    When normalizeData() is called
+    Then patient fields must be empty strings and clinical_observations empty
+    """
     payload = {"MSH": DECODED_PAYLOAD["MSH"], "_segment_order": ["MSH"]}
     normalizer = HealthcareMessageNormalizer()
     result = normalizer.normalizeData(payload)

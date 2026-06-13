@@ -9,3 +9,11 @@ dependencies = [
     "healthcare-sdk==0.2.0",
     "sqlalchemy>=2.0",
 ]
+
+[tool.pytest.ini_options]
+markers = [
+    "p0: critical — must pass before any merge",
+    "p1: high priority",
+    "p2: medium priority",
+    "p3: low priority / nice to have",
+]
