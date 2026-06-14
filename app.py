@@ -20,13 +20,13 @@ from healthcare_sdk import (
 from healthcare_sdk.usecases import DefaultHealthCareUsecase
 
 from infrastructure import (
-    GeminiAiHelper,
     FhirDecoder,
     HealthcareDecoderRouter,
     HealthcareNormalizer,
     Hl7Validator,
     Hl7V2Decoder,
 )
+from tools import GeminiAiHelper
 from repositories import PostgreSqlStorage
 from transport import MllpConnector
 from transport.messages_handler import create_process_message_handler, create_query_message_handler

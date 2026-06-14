@@ -9,7 +9,8 @@ from unittest.mock import MagicMock, patch
 
 from healthcare_sdk import ComponentRegistrationError, RestController, register_components
 from healthcare_sdk.usecases import DefaultHealthCareUsecase
-from infrastructure import GeminiAiHelper, FhirDecoder, HealthcareNormalizer, Hl7Validator, Hl7V2Decoder
+from infrastructure import FhirDecoder, HealthcareNormalizer, Hl7Validator, Hl7V2Decoder
+from tools import GeminiAiHelper
 from transport import MllpConnector
 
 BASE = Path(__file__).parent.parent.parent
