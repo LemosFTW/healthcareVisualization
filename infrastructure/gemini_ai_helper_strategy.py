@@ -38,7 +38,3 @@ class GeminiAiHelper(AiHelper):
             raise RuntimeError(
                 f"Gemini API request failed: {exc}"
             ) from None
-
-
-# Backward-compatible alias used by existing wiring in app.py / tests
-GeminiAiHelperStrategy = GeminiAiHelper

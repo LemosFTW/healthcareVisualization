@@ -12,6 +12,10 @@ class HealthcareMessageNormalizer(NormalizerTemplate):
     AI helper set in self.aiHelper (NormalizerTemplate contract).
     """
 
+    def __init__(self, ai_helper=None) -> None:
+        super().__init__()
+        self.aiHelper = ai_helper
+
     def normalizeData(self, decoded_payload: dict) -> dict:
         if not isinstance(decoded_payload, dict):
             raise NormalizationError(

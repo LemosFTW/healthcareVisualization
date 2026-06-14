@@ -49,6 +49,13 @@ def _register_exception_handlers(app) -> None:
         )
 
 
+def _build_ai_helper() -> AiHelper:
+    provider = os.getenv("AI_PROVIDER", "gemini")
+    if provider == "gemini":
+        return GeminiAiHelper()
+    raise ValueError(f"Unknown AI provider: {provider}")
+
+
 def build_engine() -> object:
     user = os.getenv("POSTGRES_USER")
     password = os.getenv("POSTGRES_PASSWORD")
@@ -71,9 +78,8 @@ def bootstrap():
     router = HealthcareDecoderRouter({"hl7v2": hl7_decoder, "fhir": fhir_decoder})
 
     validator = Hl7Validator()
-    ai_helper = GeminiAiHelper()
-    normalizer = HealthcareNormalizer()
-    normalizer.aiHelper = ai_helper  # wire AI helper for anomaly detection
+    ai_helper = _build_ai_helper()
+    normalizer = HealthcareNormalizer(ai_helper=ai_helper)
     mllp_port = int(os.getenv("MLLP_PORT", "2575"))
     mllp_connector = MllpConnector(port=mllp_port)
 

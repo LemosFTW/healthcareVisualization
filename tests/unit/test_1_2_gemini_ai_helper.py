@@ -29,7 +29,7 @@ def test_generate_response_returns_string():
     """
     genai_mock, model_instance = _make_genai_mock("Hello from Gemini")
     with _patch_genai(genai_mock):
-        from infrastructure.gemini_ai_helper import GeminiAiHelper
+        from infrastructure.gemini_ai_helper_strategy import GeminiAiHelper
         helper = GeminiAiHelper(api_key="fake-key")
         result = helper.generateResponse("Say hello")
     assert result == "Hello from Gemini"
@@ -46,7 +46,7 @@ def test_generate_response_raises_runtime_error_on_api_failure():
     genai_mock, model_instance = _make_genai_mock()
     model_instance.generate_content.side_effect = Exception("internal sdk error detail")
     with _patch_genai(genai_mock):
-        from infrastructure.gemini_ai_helper import GeminiAiHelper
+        from infrastructure.gemini_ai_helper_strategy import GeminiAiHelper
         helper = GeminiAiHelper(api_key="fake-key")
         with pytest.raises(RuntimeError, match="Gemini API request failed"):
             helper.generateResponse("fail this")
@@ -61,7 +61,7 @@ def test_init_raises_if_api_key_missing():
     """
     genai_mock, _ = _make_genai_mock()
     with _patch_genai(genai_mock):
-        from infrastructure.gemini_ai_helper import GeminiAiHelper
+        from infrastructure.gemini_ai_helper_strategy import GeminiAiHelper
         with patch.dict(os.environ, {}, clear=True):
             os.environ.pop("GEMINI_API_KEY", None)
             with pytest.raises(ValueError, match="GEMINI_API_KEY"):
@@ -78,7 +78,7 @@ def test_api_key_read_from_env():
     genai_mock, _ = _make_genai_mock()
     with _patch_genai(genai_mock):
         with patch.dict(os.environ, {"GEMINI_API_KEY": "env-key-value"}):
-            from infrastructure.gemini_ai_helper import GeminiAiHelper
+            from infrastructure.gemini_ai_helper_strategy import GeminiAiHelper
             GeminiAiHelper()
     genai_mock.configure.assert_called_once_with(api_key="env-key-value")
 
@@ -88,7 +88,7 @@ def test_google_generativeai_not_imported_outside_helper():
     """
     Given all source files in domain, infrastructure, transport and usecases layers
     When scanning for google.generativeai imports
-    Then the import must only appear in gemini_ai_helper.py
+    Then the import must only appear in gemini_ai_helper_strategy.py
     """
     import os as _os
     base = _os.path.join(_os.path.dirname(_os.path.dirname(_os.path.dirname(__file__))))
@@ -102,7 +102,7 @@ def test_google_generativeai_not_imported_outside_helper():
             for fname in files:
                 if not fname.endswith(".py"):
                     continue
-                if fname == "gemini_ai_helper.py":
+                if fname == "gemini_ai_helper_strategy.py":
                     continue
                 fpath = _os.path.join(root, fname)
                 with open(fpath) as f:

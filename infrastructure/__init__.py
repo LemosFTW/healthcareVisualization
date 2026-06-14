@@ -1,4 +1,4 @@
-from .gemini_ai_helper import GeminiAiHelper, GeminiAiHelperStrategy
+from .gemini_ai_helper_strategy import GeminiAiHelper
 from .fhir_decoder import FhirDecoder
 from .decoder_router import HealthcareDecoderRouter
 from .healthcare_normalizer import HealthcareMessageNormalizer, HealthcareNormalizer
@@ -8,7 +8,6 @@ from .postgres_storage import PostgreSqlStorage
 
 __all__ = [
     "GeminiAiHelper",
-    "GeminiAiHelperStrategy",
     "FhirDecoder",
     "HealthcareDecoderRouter",
     "HealthcareMessageNormalizer",
