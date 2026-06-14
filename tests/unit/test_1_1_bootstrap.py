@@ -8,7 +8,6 @@ from fastapi.testclient import TestClient
 from unittest.mock import MagicMock, patch
 
 from healthcare_sdk import ComponentRegistrationError, RestController, register_components
-from healthcare_sdk.usecases import DefaultHealthCareUsecase
 from infrastructure import FhirDecoder, HealthcareNormalizer, Hl7Validator, Hl7V2Decoder
 from tools import GeminiAiHelper
 from transport import MllpConnector
@@ -135,7 +134,9 @@ def test_bootstrap_function_runs_without_error():
     os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
     with _genai_mock_ctx(), patch.dict(os.environ, {"GEMINI_API_KEY": "test-key"}):
         from app import bootstrap
-        components, usecase, mllp = bootstrap()
+        components, process_usecase, commit_usecase, query_usecase, mllp = bootstrap()
     assert components is not None
-    assert usecase is not None
+    assert process_usecase is not None
+    assert commit_usecase is not None
+    assert query_usecase is not None
     assert mllp is not None

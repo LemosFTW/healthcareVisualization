@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
-from healthcare_sdk.contracts import MessageEnvelope, RawMessage, STATUS_ERROR
+from healthcare_sdk.contracts import MessageEnvelope, RawMessage
 
 
 class MessageRequest(BaseModel):
@@ -63,11 +63,11 @@ def _serialize_stored(record: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def create_query_message_handler(storage):
-    """Return an async FastAPI handler for GET /messages/{id} bound to *storage*."""
+def create_query_message_handler(usecase):
+    """Return an async FastAPI handler for GET /messages/{id} bound to *usecase*."""
 
     async def handler(id: str) -> JSONResponse:
-        record = storage.read({"id": id})
+        record = usecase.execute(id)
         if not record:
             return JSONResponse(
                 status_code=404,
@@ -84,11 +84,7 @@ def create_query_message_handler(storage):
 
 
 def create_process_message_handler(usecase):
-    """Return an async FastAPI handler for POST /messages bound to *usecase*.
-
-    Error envelopes (decode/validate failures) are explicitly persisted here because
-    the SDK's DefaultHealthCareUsecase only calls storage.save() on the happy path.
-    """
+    """Return an async FastAPI handler for POST /messages bound to *usecase*."""
 
     async def handler(body: MessageRequest) -> JSONResponse:
         raw = RawMessage(
@@ -99,11 +95,6 @@ def create_process_message_handler(usecase):
             message_type=body.message_type,
         )
         envelope = usecase.execute(raw)
-        if envelope.status == STATUS_ERROR:
-            try:
-                usecase.storage.save(envelope)
-            except Exception:
-                pass  # best-effort: don't mask pipeline errors with storage errors
         return JSONResponse(content=_serialize_envelope(envelope), status_code=200)
 
     return handler

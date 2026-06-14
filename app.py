@@ -17,7 +17,6 @@ from healthcare_sdk import (
     register_components,
     RestController,
 )
-from healthcare_sdk.usecases import DefaultHealthCareUsecase
 
 from infrastructure import (
     FhirDecoder,
@@ -28,6 +27,7 @@ from infrastructure import (
 )
 from tools import GeminiAiHelper
 from repositories import PostgreSqlStorage
+from usecases import ProcessMessageUsecase, CommitMessageUsecase, QueryMessageUsecase
 from transport import MllpConnector
 from transport.messages_handler import create_process_message_handler, create_query_message_handler
 from transport.mllp_pipeline import create_mllp_pipeline_loop
@@ -93,21 +93,23 @@ def bootstrap():
         storages=[storage],
     )
 
-    usecase = DefaultHealthCareUsecase(
+    process_usecase = ProcessMessageUsecase(
         decoder=router,
         validator=validator,
         normalizer=normalizer,
         storage=storage,
     )
+    commit_usecase = CommitMessageUsecase(storage=storage)
+    query_usecase = QueryMessageUsecase(storage=storage)
 
-    return components, usecase, mllp_connector
+    return components, process_usecase, commit_usecase, query_usecase, mllp_connector
 
 
 def run_mllp_worker() -> None:
     """Processo isolado: MLLP server + pipeline. Memória completamente separada do REST."""
-    _components, usecase, mllp = bootstrap()
+    _components, process_usecase, _commit, _query, mllp = bootstrap()
     mllp.start_in_background()
-    pipeline_loop = create_mllp_pipeline_loop(mllp, usecase, usecase.storage)
+    pipeline_loop = create_mllp_pipeline_loop(mllp, process_usecase)
     pipeline_loop()
 
 
@@ -119,12 +121,12 @@ def main():
     )
     mllp_process.start()
 
-    _components, usecase, _mllp = bootstrap()
+    _components, process_usecase, _commit_usecase, query_usecase, _mllp = bootstrap()
 
     rest_controller = RestController()
     _register_exception_handlers(rest_controller.app)
-    rest_controller.add_endpoint("/messages", "POST", create_process_message_handler(usecase))
-    rest_controller.add_endpoint("/messages/{id}", "GET", create_query_message_handler(usecase.storage))
+    rest_controller.add_endpoint("/messages", "POST", create_process_message_handler(process_usecase))
+    rest_controller.add_endpoint("/messages/{id}", "GET", create_query_message_handler(query_usecase))
 
     rest_port = int(os.getenv("PORT", "8000"))
     rest_controller.executeServer(port=rest_port)

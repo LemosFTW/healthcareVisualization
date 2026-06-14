@@ -10,13 +10,13 @@ from unittest.mock import MagicMock
 
 from healthcare_sdk import RestController
 from healthcare_sdk.contracts import STATUS_STORED, STATUS_ERROR
-from healthcare_sdk.usecases import DefaultHealthCareUsecase
 
 from infrastructure import (
     Hl7Validator, HealthcareNormalizer, HealthcareDecoderRouter,
     FhirDecoder, Hl7V2Decoder,
 )
 from repositories import PostgreSqlStorage
+from usecases import ProcessMessageUsecase
 from transport.messages_handler import create_process_message_handler
 
 VALID_FHIR_PATIENT = json.dumps({
@@ -51,7 +51,7 @@ def _build_client(ai_mock=None):
     normalizer = HealthcareNormalizer()
     if ai_mock:
         normalizer.aiHelper = ai_mock
-    usecase = DefaultHealthCareUsecase(
+    usecase = ProcessMessageUsecase(
         decoder=router, validator=Hl7Validator(), normalizer=normalizer, storage=storage
     )
     controller = RestController()

@@ -11,10 +11,10 @@ from sqlalchemy.pool import StaticPool
 
 from healthcare_sdk import RestController
 from healthcare_sdk.contracts import STATUS_STORED
-from healthcare_sdk.usecases import DefaultHealthCareUsecase
 
 from infrastructure import FhirDecoder, HealthcareDecoderRouter, HealthcareNormalizer, Hl7Validator, Hl7V2Decoder
 from repositories import PostgreSqlStorage
+from usecases import ProcessMessageUsecase, QueryMessageUsecase
 from transport import MllpConnector
 from transport.messages_handler import create_process_message_handler, create_query_message_handler
 from transport.mllp_pipeline import create_mllp_pipeline_loop
@@ -40,9 +40,10 @@ def _build_system():
     engine = _make_engine()
     storage = PostgreSqlStorage(engine)
     router = HealthcareDecoderRouter({"hl7v2": Hl7V2Decoder(), "fhir": FhirDecoder()})
-    usecase = DefaultHealthCareUsecase(
+    process_usecase = ProcessMessageUsecase(
         decoder=router, validator=Hl7Validator(), normalizer=HealthcareNormalizer(), storage=storage
     )
+    query_usecase = QueryMessageUsecase(storage=storage)
     mllp_port = _get_free_port()
     mllp = MllpConnector(host="127.0.0.1", port=mllp_port)
     controller = RestController()
@@ -51,9 +52,9 @@ def _build_system():
     async def _val_err(request, exc):
         return JSONResponse(status_code=422, content={"type": "about:blank", "title": "Unprocessable Content", "status": 422, "detail": str(exc)})
 
-    controller.add_endpoint("/messages", "POST", create_process_message_handler(usecase))
-    controller.add_endpoint("/messages/{id}", "GET", create_query_message_handler(storage))
-    return usecase, mllp, mllp_port, controller, storage
+    controller.add_endpoint("/messages", "POST", create_process_message_handler(process_usecase))
+    controller.add_endpoint("/messages/{id}", "GET", create_query_message_handler(query_usecase))
+    return process_usecase, mllp, mllp_port, controller
 
 
 def _wait_for_port(host: str, port: int, timeout: float = 3.0) -> bool:
@@ -92,7 +93,7 @@ def test_mllp_and_rest_both_accept_connections():
     When connections are made to each
     Then both must accept connections without port conflicts
     """
-    usecase, mllp, mllp_port, controller, storage = _build_system()
+    process_usecase, mllp, mllp_port, controller = _build_system()
     mllp.start_in_background()
     assert _wait_for_port("127.0.0.1", mllp_port), "MLLP port did not open in time"
     try:
@@ -110,9 +111,9 @@ def test_rest_processes_while_mllp_server_is_running():
     When POST /messages is called via the REST endpoint
     Then the message must be processed and returned with status='stored'
     """
-    usecase, mllp, mllp_port, controller, storage = _build_system()
+    process_usecase, mllp, mllp_port, controller = _build_system()
     mllp.start_in_background()
-    pipeline_loop = create_mllp_pipeline_loop(mllp, usecase, storage)
+    pipeline_loop = create_mllp_pipeline_loop(mllp, process_usecase)
     threading.Thread(target=pipeline_loop, daemon=True).start()
     _wait_for_port("127.0.0.1", mllp_port)
     try:
@@ -131,9 +132,9 @@ def test_mllp_and_rest_messages_processed_independently():
     When one message is sent via MLLP and another via REST simultaneously
     Then both must complete successfully without interfering with each other
     """
-    usecase, mllp, mllp_port, controller, storage = _build_system()
+    process_usecase, mllp, mllp_port, controller = _build_system()
     mllp.start_in_background()
-    pipeline_loop = create_mllp_pipeline_loop(mllp, usecase, storage)
+    pipeline_loop = create_mllp_pipeline_loop(mllp, process_usecase)
     threading.Thread(target=pipeline_loop, daemon=True).start()
     _wait_for_port("127.0.0.1", mllp_port)
 
@@ -173,7 +174,7 @@ def test_mllp_failure_does_not_affect_rest():
     When POST /messages is called via the REST endpoint after MLLP stops
     Then the REST endpoint must still process the message successfully
     """
-    usecase, mllp, mllp_port, controller, storage = _build_system()
+    process_usecase, mllp, mllp_port, controller = _build_system()
     mllp.start_in_background()
     _wait_for_port("127.0.0.1", mllp_port)
     mllp.stop()

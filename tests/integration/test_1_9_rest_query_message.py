@@ -8,10 +8,10 @@ from sqlalchemy.pool import StaticPool
 
 from healthcare_sdk import RestController
 from healthcare_sdk.contracts import STATUS_STORED, STATUS_ERROR
-from healthcare_sdk.usecases import DefaultHealthCareUsecase
 
 from infrastructure import Hl7Validator, HealthcareNormalizer, HealthcareDecoderRouter, Hl7V2Decoder
 from repositories import PostgreSqlStorage
+from usecases import ProcessMessageUsecase, QueryMessageUsecase
 from transport.messages_handler import create_process_message_handler, create_query_message_handler
 
 VALID_HL7 = (
@@ -29,17 +29,18 @@ def _build_client():
     engine = _make_engine()
     storage = PostgreSqlStorage(engine)
     router = HealthcareDecoderRouter({"hl7v2": Hl7V2Decoder()})
-    usecase = DefaultHealthCareUsecase(
+    process_usecase = ProcessMessageUsecase(
         decoder=router, validator=Hl7Validator(), normalizer=HealthcareNormalizer(), storage=storage
     )
+    query_usecase = QueryMessageUsecase(storage=storage)
     controller = RestController()
 
     @controller.app.exception_handler(RequestValidationError)
     async def _val_err(request, exc):
         return JSONResponse(status_code=422, content={"type": "about:blank", "title": "Unprocessable Content", "status": 422, "detail": str(exc)})
 
-    controller.add_endpoint("/messages", "POST", create_process_message_handler(usecase))
-    controller.add_endpoint("/messages/{id}", "GET", create_query_message_handler(storage))
+    controller.add_endpoint("/messages", "POST", create_process_message_handler(process_usecase))
+    controller.add_endpoint("/messages/{id}", "GET", create_query_message_handler(query_usecase))
     return TestClient(controller.app, raise_server_exceptions=False)
 
 

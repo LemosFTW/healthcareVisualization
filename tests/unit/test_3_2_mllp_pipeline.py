@@ -42,9 +42,8 @@ def test_pipeline_calls_usecase_execute():
     connector.receive.side_effect = [raw, Exception("stop loop")]
     usecase = MagicMock()
     usecase.execute.return_value = _make_stored_envelope()
-    storage = MagicMock()
 
-    loop = create_mllp_pipeline_loop(connector, usecase, storage)
+    loop = create_mllp_pipeline_loop(connector, usecase)
     t = threading.Thread(target=loop, daemon=True)
     t.start()
     t.join(timeout=1.0)
@@ -53,46 +52,25 @@ def test_pipeline_calls_usecase_execute():
 
 
 @pytest.mark.p0
-def test_pipeline_stored_envelope_not_saved_by_loop():
-    """
-    Given a pipeline where usecase.execute() returns a STATUS_STORED envelope
-    When the loop processes the message
-    Then storage.save() must NOT be called (usecase handles persistence internally)
-    """
-    connector = MagicMock()
-    connector.receive.side_effect = [_make_raw(), Exception("stop")]
-    usecase = MagicMock()
-    usecase.execute.return_value = _make_stored_envelope()
-    storage = MagicMock()
-
-    loop = create_mllp_pipeline_loop(connector, usecase, storage)
-    t = threading.Thread(target=loop, daemon=True)
-    t.start()
-    t.join(timeout=1.0)
-
-    storage.save.assert_not_called()
-
-
-@pytest.mark.p0
-def test_pipeline_persists_error_envelope():
+def test_pipeline_delegates_error_persistence_to_usecase():
     """
     Given a pipeline where usecase.execute() returns a STATUS_ERROR envelope
     When the loop processes the message
-    Then storage.save() must be called once with the error envelope
+    Then usecase.execute() must be called — error persistence is the usecase's responsibility,
+    not the pipeline loop's.
     """
     error_env = _make_error_envelope()
     connector = MagicMock()
     connector.receive.side_effect = [_make_raw(payload="GARBAGE"), Exception("stop")]
     usecase = MagicMock()
     usecase.execute.return_value = error_env
-    storage = MagicMock()
 
-    loop = create_mllp_pipeline_loop(connector, usecase, storage)
+    loop = create_mllp_pipeline_loop(connector, usecase)
     t = threading.Thread(target=loop, daemon=True)
     t.start()
     t.join(timeout=1.0)
 
-    storage.save.assert_called_once_with(error_env)
+    usecase.execute.assert_called_once()
 
 
 @pytest.mark.p0
@@ -149,9 +127,8 @@ def test_pipeline_continues_after_usecase_exception():
     connector.receive.side_effect = lambda: next(gen)
     usecase = MagicMock()
     usecase.execute.side_effect = _side_effect
-    storage = MagicMock()
 
-    loop = create_mllp_pipeline_loop(connector, usecase, storage)
+    loop = create_mllp_pipeline_loop(connector, usecase)
     t = threading.Thread(target=loop, daemon=True)
     t.start()
 

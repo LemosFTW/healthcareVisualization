@@ -9,10 +9,10 @@ from unittest.mock import MagicMock
 
 from healthcare_sdk import RestController
 from healthcare_sdk.contracts import STATUS_STORED, STATUS_ERROR
-from healthcare_sdk.usecases import DefaultHealthCareUsecase
 
 from infrastructure import Hl7Validator, HealthcareNormalizer, HealthcareDecoderRouter, Hl7V2Decoder
 from repositories import PostgreSqlStorage
+from usecases import ProcessMessageUsecase
 from transport.messages_handler import create_process_message_handler
 
 VALID_HL7 = (
@@ -43,7 +43,7 @@ def _build_client(ai_mock=None):
     if ai_mock:
         normalizer.aiHelper = ai_mock
 
-    usecase = DefaultHealthCareUsecase(decoder=router, validator=validator, normalizer=normalizer, storage=storage)
+    usecase = ProcessMessageUsecase(decoder=router, validator=validator, normalizer=normalizer, storage=storage)
     controller = RestController()
 
     @controller.app.exception_handler(RequestValidationError)
