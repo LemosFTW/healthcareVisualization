@@ -2,7 +2,7 @@
 import pytest
 from healthcare_sdk import RawMessage
 from healthcare_sdk.errors import DecodeError
-from infrastructure.hl7v2_decoder import Hl7V2Decoder
+from infrastructure.decoders.hl7v2_decoder import Hl7V2Decoder
 
 VALID_HL7 = (
     r"MSH|^~\&|SendApp|SendFac|RecApp|RecFac|20230601120000||ADT^A01|MSG001|P|2.3" + "\r"

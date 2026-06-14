@@ -3,7 +3,7 @@ import json
 import pytest
 from healthcare_sdk import RawMessage, Decoder
 from healthcare_sdk.errors import DecodeError
-from infrastructure.fhir_decoder import FhirDecoder
+from infrastructure.decoders.fhir_decoder import FhirDecoder
 
 PATIENT = {
     "resourceType": "Patient",

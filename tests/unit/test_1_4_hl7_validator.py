@@ -2,7 +2,7 @@
 import copy
 import pytest
 from healthcare_sdk.contracts import ErrorDetail, ValidationResult
-from infrastructure.hl7_validator import Hl7Validator
+from infrastructure.validators.hl7_validator import Hl7Validator
 
 VALID_PAYLOAD = {
     "MSH": {

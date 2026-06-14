@@ -2,7 +2,7 @@
 import pytest
 from unittest.mock import MagicMock
 
-from infrastructure.healthcare_normalizer import HealthcareMessageNormalizer
+from infrastructure.normalizers.healthcare_normalizer import HealthcareMessageNormalizer
 from healthcare_sdk.errors import NormalizationError
 
 DECODED_PAYLOAD = {
