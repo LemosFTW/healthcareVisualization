@@ -14,8 +14,9 @@ from healthcare_sdk.usecases import DefaultHealthCareUsecase
 
 from infrastructure import (
     Hl7Validator, HealthcareNormalizer, HealthcareDecoderRouter,
-    FhirDecoder, Hl7V2Decoder, PostgreSqlStorage,
+    FhirDecoder, Hl7V2Decoder,
 )
+from repositories import PostgreSqlStorage
 from transport.messages_handler import create_process_message_handler
 
 VALID_FHIR_PATIENT = json.dumps({

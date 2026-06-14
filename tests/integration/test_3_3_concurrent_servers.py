@@ -13,7 +13,8 @@ from healthcare_sdk import RestController
 from healthcare_sdk.contracts import STATUS_STORED
 from healthcare_sdk.usecases import DefaultHealthCareUsecase
 
-from infrastructure import FhirDecoder, HealthcareDecoderRouter, HealthcareNormalizer, Hl7Validator, Hl7V2Decoder, PostgreSqlStorage
+from infrastructure import FhirDecoder, HealthcareDecoderRouter, HealthcareNormalizer, Hl7Validator, Hl7V2Decoder
+from repositories import PostgreSqlStorage
 from transport import MllpConnector
 from transport.messages_handler import create_process_message_handler, create_query_message_handler
 from transport.mllp_pipeline import create_mllp_pipeline_loop

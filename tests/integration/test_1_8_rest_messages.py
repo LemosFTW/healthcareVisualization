@@ -11,7 +11,8 @@ from healthcare_sdk import RestController
 from healthcare_sdk.contracts import STATUS_STORED, STATUS_ERROR
 from healthcare_sdk.usecases import DefaultHealthCareUsecase
 
-from infrastructure import Hl7Validator, HealthcareNormalizer, HealthcareDecoderRouter, Hl7V2Decoder, PostgreSqlStorage
+from infrastructure import Hl7Validator, HealthcareNormalizer, HealthcareDecoderRouter, Hl7V2Decoder
+from repositories import PostgreSqlStorage
 from transport.messages_handler import create_process_message_handler
 
 VALID_HL7 = (

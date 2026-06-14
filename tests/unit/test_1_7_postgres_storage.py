@@ -3,7 +3,7 @@ import pytest
 from sqlalchemy import create_engine, inspect
 
 from healthcare_sdk.contracts import ErrorDetail, MessageEnvelope, STATUS_STORED, STATUS_ERROR
-from infrastructure.postgres_storage import PostgreSqlStorage
+from repositories.postgres_storage import PostgreSqlStorage
 
 
 def _make_engine():

@@ -26,8 +26,8 @@ from infrastructure import (
     HealthcareNormalizer,
     Hl7Validator,
     Hl7V2Decoder,
-    PostgreSqlStorage,
 )
+from repositories import PostgreSqlStorage
 from transport import MllpConnector
 from transport.messages_handler import create_process_message_handler, create_query_message_handler
 from transport.mllp_pipeline import create_mllp_pipeline_loop
