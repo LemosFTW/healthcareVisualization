@@ -1,6 +1,9 @@
 import multiprocessing
 import os
 
+from dotenv import load_dotenv
+load_dotenv()
+
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from sqlalchemy import create_engine
@@ -51,8 +54,9 @@ def _register_exception_handlers(app) -> None:
 
 def _build_ai_helper() -> AiHelper:
     provider = os.getenv("AI_PROVIDER", "gemini")
+    apikey = os.getenv("GEMINI_API_KEY")
     if provider == "gemini":
-        return GeminiAiHelper()
+        return GeminiAiHelper(api_key=apikey)
     raise ValueError(f"Unknown AI provider: {provider}")
 
 

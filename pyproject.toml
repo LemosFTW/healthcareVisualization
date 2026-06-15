@@ -5,8 +5,10 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "google-genai>=2.8.0",
     "google-generativeai>=0.8.6",
     "healthcare-sdk==0.2.0",
+    "python-dotenv>=1.2.2",
     "sqlalchemy>=2.0",
 ]
 
