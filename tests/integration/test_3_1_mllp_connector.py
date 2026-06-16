@@ -1,10 +1,11 @@
 """Story 3.1 — MllpConnector: MLLP framing, receive(), ACK, Adapter contract."""
 import socket
 import time
-import threading
+
 import pytest
 from healthcare_sdk import Adapter, RawMessage
-from transport.mllp_connector import MllpConnector, MLLP_START, MLLP_END
+
+from transport.mllp_connector import MLLP_END, MLLP_START, MllpConnector
 
 VALID_HL7 = (
     r"MSH|^~\&|SendApp|SendFac|RecApp|RecFac|20230601120000||ADT^A01|MSG001|P|2.3" + "\r"

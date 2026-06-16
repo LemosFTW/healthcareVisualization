@@ -2,41 +2,39 @@ import multiprocessing
 import os
 
 from dotenv import load_dotenv
-
-from infrastructure.normalizers.healthcare_normalizer import HealthcareMessageNormalizer
-load_dotenv()
-
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
-from sqlalchemy import create_engine
-
 from healthcare_sdk import (
     Adapter,
     AiHelper,
-    ComponentRegistrationError,
     Decoder,
     HealthCareStorage,
     HealthCareUsecase,
-    Normalizer,
     NormalizerTemplate,
-    Validator,
+    RestController,
     ValidatorTemplate,
     register_components,
-    RestController,
 )
+from sqlalchemy import create_engine
 
 from infrastructure import (
     FhirDecoder,
     HealthcareDecoderRouter,
-    Hl7Validator,
     Hl7V2Decoder,
+    Hl7Validator,
 )
-from tools import GeminiAiHelper
+from infrastructure.normalizers.healthcare_normalizer import HealthcareMessageNormalizer
 from repositories import PostgreSqlStorage
-from usecases import ProcessMessageUsecase, CommitMessageUsecase, QueryMessageUsecase
+from tools import GeminiAiHelper
 from transport import MllpConnector
-from transport.messages_handler import create_process_message_handler, create_query_message_handler
+from transport.messages_handler import (
+    create_process_message_handler,
+    create_query_message_handler,
+)
 from transport.mllp_pipeline import create_mllp_pipeline_loop
+from usecases import CommitMessageUsecase, ProcessMessageUsecase, QueryMessageUsecase
+
+load_dotenv()
 
 
 def _register_exception_handlers(app) -> None:
@@ -77,12 +75,14 @@ def build_engine() -> object:
 
 
 def bootstrap():
-    """Compose all concrete components and validate contracts via register_components."""
+    """Compose concrete components and validate contracts via register_components."""
     engine = build_engine()
     storage : HealthCareStorage = PostgreSqlStorage(engine)
     hl7_decoder : Decoder = Hl7V2Decoder()
     fhir_decoder : Decoder = FhirDecoder()
-    router : Decoder = HealthcareDecoderRouter({"hl7v2": hl7_decoder, "fhir": fhir_decoder})
+    router : Decoder = HealthcareDecoderRouter(
+        {"hl7v2": hl7_decoder, "fhir": fhir_decoder}
+    )
     validator : ValidatorTemplate = Hl7Validator()
     ai_helper : AiHelper = _build_ai_helper()
     normalizer : NormalizerTemplate = HealthcareMessageNormalizer(ai_helper=ai_helper)
@@ -110,7 +110,7 @@ def bootstrap():
 
 
 def run_mllp_worker() -> None:
-    """Processo isolado: MLLP server + pipeline. Memória completamente separada do REST."""
+    """Processo isolado: MLLP server + pipeline. Memória separada do REST."""
     _components, process_usecase, _commit, _query, mllp = bootstrap()
     mllp.start_in_background()
     pipeline_loop = create_mllp_pipeline_loop(mllp, process_usecase)
@@ -129,8 +129,12 @@ def main():
 
     rest_controller = RestController()
     _register_exception_handlers(rest_controller.app)
-    rest_controller.add_endpoint("/messages", "POST", create_process_message_handler(process_usecase))
-    rest_controller.add_endpoint("/messages/{id}", "GET", create_query_message_handler(query_usecase))
+    rest_controller.add_endpoint(
+        "/messages", "POST", create_process_message_handler(process_usecase)
+    )
+    rest_controller.add_endpoint(
+        "/messages/{id}", "GET", create_query_message_handler(query_usecase)
+    )
 
     rest_port = int(os.getenv("PORT", "8000"))
     rest_controller.executeServer(port=rest_port)

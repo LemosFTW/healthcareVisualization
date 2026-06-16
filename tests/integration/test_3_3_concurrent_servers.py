@@ -2,23 +2,32 @@
 import socket
 import threading
 import time
+
 import pytest
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
+from healthcare_sdk import RestController
+from healthcare_sdk.contracts import STATUS_STORED
 from sqlalchemy import create_engine
 from sqlalchemy.pool import StaticPool
 
-from healthcare_sdk import RestController
-from healthcare_sdk.contracts import STATUS_STORED
-
-from infrastructure import FhirDecoder, HealthcareDecoderRouter, HealthcareNormalizer, Hl7Validator, Hl7V2Decoder
+from infrastructure import (
+    FhirDecoder,
+    HealthcareDecoderRouter,
+    HealthcareNormalizer,
+    Hl7V2Decoder,
+    Hl7Validator,
+)
 from repositories import PostgreSqlStorage
-from usecases import ProcessMessageUsecase, QueryMessageUsecase
 from transport import MllpConnector
-from transport.messages_handler import create_process_message_handler, create_query_message_handler
+from transport.messages_handler import (
+    create_process_message_handler,
+    create_query_message_handler,
+)
+from transport.mllp_connector import MLLP_END, MLLP_START
 from transport.mllp_pipeline import create_mllp_pipeline_loop
-from transport.mllp_connector import MLLP_START, MLLP_END
+from usecases import ProcessMessageUsecase, QueryMessageUsecase
 
 VALID_HL7 = (
     r"MSH|^~\&|SendApp|SendFac|RecApp|RecFac|20230601120000||ADT^A01|MSG001|P|2.3"
@@ -193,8 +202,9 @@ def test_main_registers_both_channels():
     Then main() must launch a multiprocessing.Process with run_mllp_worker, register REST endpoints and start the REST server;
     and run_mllp_worker() must start the MLLP server and pipeline
     """
-    import app as app_module
     import inspect
+
+    import app as app_module
 
     main_src = inspect.getsource(app_module.main)
     worker_src = inspect.getsource(app_module.run_mllp_worker)

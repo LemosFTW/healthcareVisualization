@@ -1,8 +1,8 @@
 from __future__ import annotations
+
 import os
 
 import httpx
-
 from healthcare_sdk import AiHelper
 
 _GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent"

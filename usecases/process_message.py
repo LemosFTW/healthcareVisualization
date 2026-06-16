@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import logging
 
 from healthcare_sdk.contracts import STATUS_ERROR

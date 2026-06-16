@@ -1,9 +1,10 @@
 """Story 1.6 — HealthcareDecoderRouter."""
-import pytest
 from unittest.mock import MagicMock
 
+import pytest
 from healthcare_sdk import RawMessage
 from healthcare_sdk.errors import DecodeError
+
 from infrastructure.decoder_router import HealthcareDecoderRouter
 
 HL7_RESULT = {"MSH": {"message_type": "ADT^A01"}}

@@ -1,9 +1,9 @@
 from __future__ import annotations
-from typing import Any, Dict, List, Tuple
+
+from typing import List, Tuple
 
 from healthcare_sdk import ValidationResult, ValidatorTemplate
 from healthcare_sdk.contracts import ErrorDetail
-
 
 # (field_name_in_decoded_dict, human-readable label)
 _MSH_REQUIRED: List[Tuple[str, str]] = [

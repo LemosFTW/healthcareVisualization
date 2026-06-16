@@ -1,9 +1,10 @@
 """Story 1.5 — HealthcareMessageNormalizer with anomaly detection."""
-import pytest
 from unittest.mock import MagicMock
 
-from infrastructure.normalizers.healthcare_normalizer import HealthcareMessageNormalizer
+import pytest
 from healthcare_sdk.errors import NormalizationError
+
+from infrastructure.normalizers.healthcare_normalizer import HealthcareMessageNormalizer
 
 DECODED_PAYLOAD = {
     "MSH": {

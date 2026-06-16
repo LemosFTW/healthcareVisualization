@@ -1,6 +1,10 @@
 """Shared test infrastructure — fake components and common fixtures."""
 import pytest
-from healthcare_sdk.contracts import MessageEnvelope, RawMessage, STATUS_STORED, ValidationResult
+from healthcare_sdk.contracts import (
+    MessageEnvelope,
+    RawMessage,
+    ValidationResult,
+)
 
 
 class FakeDecoder:

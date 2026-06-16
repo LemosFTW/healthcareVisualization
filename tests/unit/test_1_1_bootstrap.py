@@ -2,13 +2,18 @@
 import os
 import sys
 import types
-import pytest
 from pathlib import Path
-from fastapi.testclient import TestClient
 from unittest.mock import MagicMock, patch
 
-from healthcare_sdk import ComponentRegistrationError, RestController, register_components
-from infrastructure import FhirDecoder, HealthcareNormalizer, Hl7Validator, Hl7V2Decoder
+import pytest
+from fastapi.testclient import TestClient
+from healthcare_sdk import (
+    ComponentRegistrationError,
+    RestController,
+    register_components,
+)
+
+from infrastructure import FhirDecoder, HealthcareNormalizer, Hl7V2Decoder, Hl7Validator
 from tools import GeminiAiHelper
 from transport import MllpConnector
 
@@ -49,8 +54,8 @@ def test_register_components_succeeds_with_valid_components():
     Then no ComponentRegistrationError must be raised
     """
     with _genai_mock_ctx(), patch.dict(os.environ, {"GEMINI_API_KEY": "test-key"}):
-        from sqlalchemy import create_engine
         from healthcare_sdk import PostgreSqlStorage
+        from sqlalchemy import create_engine
         engine = create_engine("sqlite:///:memory:")
         storage = PostgreSqlStorage(engine)
         components = register_components(

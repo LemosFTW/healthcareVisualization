@@ -2,8 +2,9 @@
 import os
 import sys
 import types
-import pytest
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 
 def _make_genai_mock(response_text: str = "mocked response"):

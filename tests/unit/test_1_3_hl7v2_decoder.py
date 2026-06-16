@@ -2,6 +2,7 @@
 import pytest
 from healthcare_sdk import RawMessage
 from healthcare_sdk.errors import DecodeError
+
 from infrastructure.decoders.hl7v2_decoder import Hl7V2Decoder
 
 VALID_HL7 = (

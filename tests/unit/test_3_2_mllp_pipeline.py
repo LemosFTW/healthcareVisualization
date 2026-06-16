@@ -1,10 +1,17 @@
 """Story 3.2 — MLLP Pipeline Integration."""
 import threading
 import time
-import pytest
 from unittest.mock import MagicMock
 
-from healthcare_sdk.contracts import MessageEnvelope, RawMessage, STATUS_STORED, STATUS_ERROR, ErrorDetail
+import pytest
+from healthcare_sdk.contracts import (
+    STATUS_ERROR,
+    STATUS_STORED,
+    ErrorDetail,
+    MessageEnvelope,
+    RawMessage,
+)
+
 from transport.mllp_pipeline import create_mllp_pipeline_loop
 
 

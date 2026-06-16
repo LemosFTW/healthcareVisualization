@@ -1,9 +1,9 @@
 from __future__ import annotations
-from typing import Any, Dict, List, Optional
+
+from typing import Any, Dict, List
 
 from healthcare_sdk import Decoder, RawMessage
 from healthcare_sdk.errors import DecodeError
-
 
 # Field name maps for common HL7 v2.3 segments.
 # Indices are 0-based into fields[1:] (i.e., after stripping the segment name).

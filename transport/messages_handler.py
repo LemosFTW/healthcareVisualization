@@ -1,12 +1,12 @@
 """REST handler for POST /messages — processes a raw message through the full pipeline."""
 from __future__ import annotations
+
 import uuid
 from typing import Any, Dict, List, Optional
 
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel
-
 from healthcare_sdk.contracts import MessageEnvelope, RawMessage
+from pydantic import BaseModel
 
 
 class MessageRequest(BaseModel):

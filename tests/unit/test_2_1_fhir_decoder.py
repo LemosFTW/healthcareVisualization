@@ -1,8 +1,10 @@
 """Story 2.1 — FhirDecoder."""
 import json
+
 import pytest
-from healthcare_sdk import RawMessage, Decoder
+from healthcare_sdk import Decoder, RawMessage
 from healthcare_sdk.errors import DecodeError
+
 from infrastructure.decoders.fhir_decoder import FhirDecoder
 
 PATIENT = {

@@ -1,23 +1,26 @@
 """Story 2.2 — FHIR Support via REST Router Integration."""
 import json
+from unittest.mock import MagicMock
+
 import pytest
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
+from healthcare_sdk import RestController
+from healthcare_sdk.contracts import STATUS_ERROR, STATUS_STORED
 from sqlalchemy import create_engine
 from sqlalchemy.pool import StaticPool
-from unittest.mock import MagicMock
-
-from healthcare_sdk import RestController
-from healthcare_sdk.contracts import STATUS_STORED, STATUS_ERROR
 
 from infrastructure import (
-    Hl7Validator, HealthcareNormalizer, HealthcareDecoderRouter,
-    FhirDecoder, Hl7V2Decoder,
+    FhirDecoder,
+    HealthcareDecoderRouter,
+    HealthcareNormalizer,
+    Hl7V2Decoder,
+    Hl7Validator,
 )
 from repositories import PostgreSqlStorage
-from usecases import ProcessMessageUsecase
 from transport.messages_handler import create_process_message_handler
+from usecases import ProcessMessageUsecase
 
 VALID_FHIR_PATIENT = json.dumps({
     "resourceType": "Patient",
