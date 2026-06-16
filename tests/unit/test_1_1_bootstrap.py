@@ -13,7 +13,7 @@ from healthcare_sdk import (
     register_components,
 )
 
-from infrastructure import FhirDecoder, HealthcareNormalizer, Hl7V2Decoder, Hl7Validator
+from infrastructure import FhirDecoder, HealthcareMessageNormalizer, Hl7V2Decoder, Hl7Validator
 from tools import GeminiAiHelper
 from transport import MllpConnector
 
@@ -64,7 +64,7 @@ def test_register_components_succeeds_with_valid_components():
             validators=[Hl7Validator()],
             decoders=[Hl7V2Decoder(), FhirDecoder()],
             aihelpers=[GeminiAiHelper()],
-            normalizers=[HealthcareNormalizer()],
+            normalizers=[HealthcareMessageNormalizer()],
             storages=[storage],
         )
     assert components is not None

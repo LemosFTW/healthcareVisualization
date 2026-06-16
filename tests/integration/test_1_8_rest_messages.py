@@ -12,7 +12,7 @@ from sqlalchemy.pool import StaticPool
 
 from infrastructure import (
     HealthcareDecoderRouter,
-    HealthcareNormalizer,
+    HealthcareMessageNormalizer,
     Hl7V2Decoder,
     Hl7Validator,
 )
@@ -44,7 +44,7 @@ def _build_client(ai_mock=None):
     storage = PostgreSqlStorage(engine)
     router = HealthcareDecoderRouter({"hl7v2": Hl7V2Decoder()})
     validator = Hl7Validator()
-    normalizer = HealthcareNormalizer()
+    normalizer = HealthcareMessageNormalizer()
     if ai_mock:
         normalizer.aiHelper = ai_mock
 

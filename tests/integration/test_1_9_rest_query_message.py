@@ -10,7 +10,7 @@ from sqlalchemy.pool import StaticPool
 
 from infrastructure import (
     HealthcareDecoderRouter,
-    HealthcareNormalizer,
+    HealthcareMessageNormalizer,
     Hl7V2Decoder,
     Hl7Validator,
 )
@@ -37,7 +37,7 @@ def _build_client():
     storage = PostgreSqlStorage(engine)
     router = HealthcareDecoderRouter({"hl7v2": Hl7V2Decoder()})
     process_usecase = ProcessMessageUsecase(
-        decoder=router, validator=Hl7Validator(), normalizer=HealthcareNormalizer(), storage=storage
+        decoder=router, validator=Hl7Validator(), normalizer=HealthcareMessageNormalizer(), storage=storage
     )
     query_usecase = QueryMessageUsecase(storage=storage)
     controller = RestController()

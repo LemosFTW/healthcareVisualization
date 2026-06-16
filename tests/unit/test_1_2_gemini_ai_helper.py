@@ -24,17 +24,21 @@ def _patch_genai(genai_mock):
 @pytest.mark.p0
 def test_generate_response_returns_string():
     """
-    Given a GeminiAiHelper instance with a mocked Gemini SDK
+    Given a GeminiAiHelper instance with a mocked HTTP client
     When generateResponse() is called with a prompt
-    Then the text returned by Gemini must be returned as a string
+    Then the text returned by the Gemini REST API must be returned as a string
     """
-    genai_mock, model_instance = _make_genai_mock("Hello from Gemini")
-    with _patch_genai(genai_mock):
-        from tools.gemini_ai_helper_strategy import GeminiAiHelper
+    from tools.gemini_ai_helper_strategy import GeminiAiHelper
+    fake_resp = MagicMock()
+    fake_resp.raise_for_status = MagicMock()
+    fake_resp.json.return_value = {
+        "candidates": [{"content": {"parts": [{"text": "Hello from Gemini"}]}}]
+    }
+    with patch("tools.gemini_ai_helper_strategy.httpx.post", return_value=fake_resp) as mock_post:
         helper = GeminiAiHelper(api_key="fake-key")
         result = helper.generateResponse("Say hello")
     assert result == "Hello from Gemini"
-    model_instance.generate_content.assert_called_once_with("Say hello")
+    mock_post.assert_called_once()
 
 
 @pytest.mark.p0
@@ -74,14 +78,12 @@ def test_api_key_read_from_env():
     """
     Given GEMINI_API_KEY set in environment
     When GeminiAiHelper() is instantiated without explicit key
-    Then Gemini SDK must be configured with the env var value
+    Then the helper must embed the env var value in its API URL
     """
-    genai_mock, _ = _make_genai_mock()
-    with _patch_genai(genai_mock):
-        with patch.dict(os.environ, {"GEMINI_API_KEY": "env-key-value"}):
-            from tools.gemini_ai_helper_strategy import GeminiAiHelper
-            GeminiAiHelper()
-    genai_mock.configure.assert_called_once_with(api_key="env-key-value")
+    from tools.gemini_ai_helper_strategy import GeminiAiHelper
+    with patch.dict(os.environ, {"GEMINI_API_KEY": "env-key-value"}):
+        helper = GeminiAiHelper()
+    assert "env-key-value" in helper._url
 
 
 @pytest.mark.p0
