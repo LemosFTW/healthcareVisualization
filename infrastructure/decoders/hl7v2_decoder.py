@@ -77,7 +77,9 @@ _SEGMENT_MAPS: Dict[str, Dict[int, str]] = {
 _REPEATING_SEGMENTS = {"OBR", "OBX", "NTE", "GT1", "IN1", "DG1", "AL1"}
 
 
-def _map_fields(seg_name: str, fields: List[str], field_map: Dict[int, str]) -> Dict[str, Any]:
+def _map_fields(
+    seg_name: str, fields: List[str], field_map: Dict[int, str]
+) -> Dict[str, Any]:
     """Convert a list of raw field strings into a named dict using the given map."""
     result: Dict[str, Any] = {"_raw_fields": fields}
     for idx, name in field_map.items():
@@ -89,8 +91,8 @@ def _map_fields(seg_name: str, fields: List[str], field_map: Dict[int, str]) -> 
 def _parse_segment(seg_name: str, fields: List[str]) -> Dict[str, Any]:
     """Parse one segment's field list into a structured dict.
 
-    For MSH, fields[0] is 'MSH' and fields[1] is encoding chars (MSH.2 in HL7 standard).
-    For other segments, fields[0] is the segment name, fields[1] is the first data field.
+    For MSH, fields[1] is encoding chars (MSH.2); for other segments
+    fields[1] is the first data field.
     """
     field_map = _SEGMENT_MAPS.get(seg_name, {})
     if not field_map:
@@ -113,37 +115,47 @@ class Hl7V2Decoder(Decoder):
     """
 
     def decode(self, raw_message: RawMessage) -> dict:
-        payload = raw_message.raw_payload
-        if isinstance(payload, bytes):
-            payload = payload.decode("latin-1", errors="replace")
-
-        text = payload.strip().replace("\r\n", "\r").replace("\n", "\r")
+        text = self._normalize_payload(raw_message.raw_payload)
         raw_segments = [s.strip() for s in text.split("\r") if s.strip()]
 
         if not raw_segments:
-            raise DecodeError("HL7 payload contains no segments", context={"raw_id": raw_message.id})
-
-        first = raw_segments[0]
-        if not first.startswith("MSH"):
             raise DecodeError(
-                f"HL7 payload must begin with MSH segment, found: {first[:3]!r}",
+                "HL7 payload contains no segments",
                 context={"raw_id": raw_message.id},
             )
 
+        field_sep = self._validate_msh(raw_segments[0], raw_message.id)
+        return self._parse_all_segments(raw_segments, field_sep)
+
+    def _normalize_payload(self, payload: Any) -> str:
+        if isinstance(payload, bytes):
+            payload = payload.decode("latin-1", errors="replace")
+        return payload.strip().replace("\r\n", "\r").replace("\n", "\r")
+
+    def _validate_msh(self, first: str, raw_id: str) -> str:
+        """Validate MSH is the first segment and extract the field separator."""
+        if not first.startswith("MSH"):
+            raise DecodeError(
+                f"HL7 payload must begin with MSH segment, found: {first[:3]!r}",
+                context={"raw_id": raw_id},
+            )
         if len(first) < 8:
             raise DecodeError(
                 "MSH segment too short to contain required encoding characters",
                 context={"msh_snippet": first[:20]},
             )
-
-        field_sep = first[3]  # char at position 3 defines the field separator (usually '|')
-        # Validate field separator is a printable non-alphanumeric character
+        field_sep = first[3]  # position 3 is the field separator (usually '|')
         if field_sep.isalnum() or not field_sep.isprintable():
             raise DecodeError(
                 f"Invalid HL7 field separator: {field_sep!r}",
                 context={"msh_snippet": first[:20]},
             )
+        return field_sep
 
+    def _parse_all_segments(
+        self, raw_segments: List[str], field_sep: str
+    ) -> Dict[str, Any]:
+        """Iterate all segments and build the structured result dict."""
         result: Dict[str, Any] = {}
         segment_order: List[str] = []
 
