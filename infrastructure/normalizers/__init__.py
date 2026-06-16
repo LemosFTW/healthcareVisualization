@@ -1,3 +1,3 @@
-from .healthcare_normalizer import HealthcareMessageNormalizer, HealthcareNormalizer
+from .healthcare_normalizer import HealthcareMessageNormalizer
 
-__all__ = ["HealthcareMessageNormalizer", "HealthcareNormalizer"]
+__all__ = ["HealthcareMessageNormalizer"]

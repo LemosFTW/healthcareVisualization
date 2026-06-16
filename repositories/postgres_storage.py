@@ -3,6 +3,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
+from healthcare_sdk import HealthCareStorage
 from sqlalchemy import JSON, DateTime, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, Session
 
@@ -66,7 +67,7 @@ class _HealthcareMessageLog(Base):
         }
 
 
-class PostgreSqlStorage:
+class PostgreSqlStorage(HealthCareStorage):
     """Project-level storage implementing HealthCareStorage with full envelope persistence.
 
     Stores all MessageEnvelope fields (decoded_payload, normalized_payload, errors).

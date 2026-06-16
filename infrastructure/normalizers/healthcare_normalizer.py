@@ -84,11 +84,16 @@ class HealthcareMessageNormalizer(NormalizerTemplate):
         return normalized
 
     def _detect_anomalies(self, observations: List[Dict[str, Any]]) -> List[str]:
+        print(f"Detecting anomalies in {len(observations)} observations using AI helper...")
         prompt = self._build_anomaly_prompt(observations)
+        print(f"Anomaly detection prompt:\n{prompt}")
         try:
-            response = self.aiHelper.generateResponse(prompt)  # type: ignore[union-attr]
+            print("Sending prompt to AI helper...")
+            response = self.aiHelper.generateResponse(prompt)
+            print(f"AI helper response:\n{response}")
             return self._parse_anomaly_response(response)
         except Exception:
+            print("AI helper failed to analyze observations for anomalies.")
             return []
 
     def _build_anomaly_prompt(self, observations: List[Dict[str, Any]]) -> str:
@@ -118,8 +123,5 @@ class HealthcareMessageNormalizer(NormalizerTemplate):
                 text = stripped[len("ANOMALY:"):].strip()
                 if text:
                     warnings.append(text)
+        print(f"Parsed anomalies: {warnings}")
         return warnings
-
-
-# Backward-compatible alias kept for existing wiring
-HealthcareNormalizer = HealthcareMessageNormalizer

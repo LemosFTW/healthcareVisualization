@@ -2,6 +2,8 @@ import multiprocessing
 import os
 
 from dotenv import load_dotenv
+
+from infrastructure.normalizers.healthcare_normalizer import HealthcareMessageNormalizer
 load_dotenv()
 
 from fastapi.exceptions import RequestValidationError
@@ -16,7 +18,9 @@ from healthcare_sdk import (
     HealthCareStorage,
     HealthCareUsecase,
     Normalizer,
+    NormalizerTemplate,
     Validator,
+    ValidatorTemplate,
     register_components,
     RestController,
 )
@@ -24,7 +28,6 @@ from healthcare_sdk import (
 from infrastructure import (
     FhirDecoder,
     HealthcareDecoderRouter,
-    HealthcareNormalizer,
     Hl7Validator,
     Hl7V2Decoder,
 )
@@ -76,36 +79,33 @@ def build_engine() -> object:
 def bootstrap():
     """Compose all concrete components and validate contracts via register_components."""
     engine = build_engine()
-    storage = PostgreSqlStorage(engine)
-    hl7_decoder = Hl7V2Decoder()
-    fhir_decoder = FhirDecoder()
-    router = HealthcareDecoderRouter({"hl7v2": hl7_decoder, "fhir": fhir_decoder})
-
-    validator = Hl7Validator()
-    ai_helper = _build_ai_helper()
-    normalizer = HealthcareNormalizer(ai_helper=ai_helper)
+    storage : HealthCareStorage = PostgreSqlStorage(engine)
+    hl7_decoder : Decoder = Hl7V2Decoder()
+    fhir_decoder : Decoder = FhirDecoder()
+    router : Decoder = HealthcareDecoderRouter({"hl7v2": hl7_decoder, "fhir": fhir_decoder})
+    validator : ValidatorTemplate = Hl7Validator()
+    ai_helper : AiHelper = _build_ai_helper()
+    normalizer : NormalizerTemplate = HealthcareMessageNormalizer(ai_helper=ai_helper)
     mllp_port = int(os.getenv("MLLP_PORT", "2575"))
-    mllp_connector = MllpConnector(port=mllp_port)
+    mllp_connector : Adapter = MllpConnector(port=mllp_port)
 
+    process_usecase : HealthCareUsecase = ProcessMessageUsecase(
+        decoder=router,
+        validator=validator,
+        normalizer=normalizer,
+        storage=storage,
+    )
+    commit_usecase : HealthCareUsecase = CommitMessageUsecase(storage=storage)
+    query_usecase : HealthCareUsecase = QueryMessageUsecase(storage=storage)
     components = register_components(
         adapters=[mllp_connector],
-        usecases=[],
+        usecases=[commit_usecase, query_usecase, process_usecase],
         validators=[validator],
         decoders=[router],
         aihelpers=[ai_helper],
         normalizers=[normalizer],
         storages=[storage],
     )
-
-    process_usecase = ProcessMessageUsecase(
-        decoder=router,
-        validator=validator,
-        normalizer=normalizer,
-        storage=storage,
-    )
-    commit_usecase = CommitMessageUsecase(storage=storage)
-    query_usecase = QueryMessageUsecase(storage=storage)
-
     return components, process_usecase, commit_usecase, query_usecase, mllp_connector
 
 

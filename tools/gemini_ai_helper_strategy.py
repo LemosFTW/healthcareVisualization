@@ -5,7 +5,7 @@ import httpx
 
 from healthcare_sdk import AiHelper
 
-_GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
+_GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent"
 
 
 class GeminiAiHelper(AiHelper):
@@ -33,4 +33,5 @@ class GeminiAiHelper(AiHelper):
             resp.raise_for_status()
             return resp.json()["candidates"][0]["content"]["parts"][0]["text"]
         except Exception as exc:
+            print(f"Gemini API request failed: {exc}")
             raise RuntimeError(f"Gemini API request failed: {exc}") from None
