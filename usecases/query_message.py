@@ -2,8 +2,10 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
+from healthcare_sdk.usecases import HealthCareUsecase
 
-class QueryMessageUsecase:
+
+class QueryMessageUsecase(HealthCareUsecase):
     """Retrieves a stored message envelope by ID."""
 
     def __init__(self, storage) -> None:

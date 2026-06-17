@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from healthcare_sdk.contracts import MessageEnvelope, RawMessage
+from healthcare_sdk.usecases import HealthCareUsecase
 
 
-class CommitMessageUsecase:
+class CommitMessageUsecase(HealthCareUsecase):
     """Explicitly persists a raw message as a committed envelope.
 
     Used when the transport layer needs to force-save a message
