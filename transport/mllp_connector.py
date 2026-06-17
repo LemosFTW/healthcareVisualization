@@ -16,7 +16,8 @@ logger = logging.getLogger(__name__)
 
 
 class MllpConnector(Adapter):
-    """TCP socket server that speaks MLLP (Minimal Lower Layer Protocol) for HL7v2 messages."""
+    """TCP socket server that speaks MLLP (Minimal Lower Layer Protocol)
+    for HL7v2 messages."""
 
     def __init__(self, host: str = "0.0.0.0", port: int = 2575) -> None:
         self._host = host
@@ -25,7 +26,7 @@ class MllpConnector(Adapter):
         self._server_thread: Optional[threading.Thread] = None
         self._running = False
 
-    def executeServer(self, port: Optional[int] = None) -> None:
+    def executeServer(self, port: Optional[int] = None) -> None:  # noqa: N802
         """Start the MLLP TCP server (blocking until stopped)."""
         if port is not None:
             self._port = port
@@ -134,6 +135,7 @@ class MllpConnector(Adapter):
             version = "2.5"
 
         import datetime
+
         now = datetime.datetime.now(datetime.UTC).strftime("%Y%m%d%H%M%S")
 
         ack_text = (

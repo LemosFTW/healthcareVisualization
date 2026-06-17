@@ -17,7 +17,7 @@ class HealthcareMessageNormalizer(NormalizerTemplate):
         super().__init__()
         self.aiHelper = ai_helper
 
-    def normalizeData(self, decoded_payload: dict) -> dict:
+    def normalizeData(self, decoded_payload: dict) -> dict:  # noqa: N802
         if not isinstance(decoded_payload, dict):
             raise NormalizationError(
                 "decoded_payload must be a dictionary",
@@ -29,7 +29,9 @@ class HealthcareMessageNormalizer(NormalizerTemplate):
         obx_raw = decoded_payload.get("OBX", [])
         obx_list = obx_raw if isinstance(obx_raw, list) else [obx_raw]
 
-        patient_id = (pid.get("patient_identifier_list", "") or pid.get("patient_id", "")).strip()
+        patient_id = (
+            pid.get("patient_identifier_list", "") or pid.get("patient_id", "")
+        ).strip()
 
         # HL7 OBX observations
         clinical_observations = [
@@ -50,16 +52,22 @@ class HealthcareMessageNormalizer(NormalizerTemplate):
             fhir_resources = decoded_payload.get("resources", [])
             if isinstance(fhir_resources, list):
                 for res in fhir_resources:
-                    if isinstance(res, dict) and res.get("resourceType") == "Observation":
+                    if (
+                        isinstance(res, dict)
+                        and res.get("resourceType") == "Observation"
+                    ):
                         vq = res.get("valueQuantity") or {}
-                        clinical_observations.append({
-                            "identifier": f"{res.get('id', '')} - {(res.get('code') or {}).get('text', '')}",
-                            "value": str(vq.get("value", "")),
-                            "units": vq.get("unit", ""),
-                            "reference_range": "",
-                            "abnormal_flags": "",
-                            "status": res.get("status", ""),
-                        })
+                        code_text = (res.get("code") or {}).get("text", "")
+                        clinical_observations.append(
+                            {
+                                "identifier": f"{res.get('id', '')} - {code_text}",
+                                "value": str(vq.get("value", "")),
+                                "units": vq.get("unit", ""),
+                                "reference_range": "",
+                                "abnormal_flags": "",
+                                "status": res.get("status", ""),
+                            }
+                        )
 
         normalized: Dict[str, Any] = {
             "patient": {
@@ -85,7 +93,9 @@ class HealthcareMessageNormalizer(NormalizerTemplate):
         return normalized
 
     def _detect_anomalies(self, observations: List[Dict[str, Any]]) -> List[str]:
-        print(f"Detecting anomalies in {len(observations)} observations using AI helper...")
+        print(
+            f"Detecting anomalies in {len(observations)} observations via AI helper..."
+        )
         prompt = self._build_anomaly_prompt(observations)
         print(f"Anomaly detection prompt:\n{prompt}")
         try:
@@ -106,8 +116,9 @@ class HealthcareMessageNormalizer(NormalizerTemplate):
         ]
         obs_text = "\n".join(lines) if lines else "(no values)"
         return (
-            "Analyze these clinical observations for clinically suspicious or dangerous values "
-            "that may indicate patient risk (e.g. heart rate = 0, extreme out-of-range values):\n"
+            "Analyze these clinical observations for clinically suspicious "
+            "or dangerous values that may indicate patient risk "
+            "(e.g. heart rate = 0, extreme out-of-range values):\n"
             f"{obs_text}\n\n"
             "For EACH suspicious finding respond with exactly ONE line:\n"
             "ANOMALY: <identifier> - <reason>\n"
@@ -121,7 +132,7 @@ class HealthcareMessageNormalizer(NormalizerTemplate):
         for line in response.strip().splitlines():
             stripped = line.strip()
             if stripped.upper().startswith("ANOMALY:"):
-                text = stripped[len("ANOMALY:"):].strip()
+                text = stripped[len("ANOMALY:") :].strip()
                 if text:
                     warnings.append(text)
         print(f"Parsed anomalies: {warnings}")

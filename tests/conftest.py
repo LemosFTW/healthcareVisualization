@@ -1,4 +1,5 @@
 """Shared test infrastructure — fake components and common fixtures."""
+
 import pytest
 from healthcare_sdk.contracts import (
     MessageEnvelope,
@@ -18,7 +19,7 @@ class FakeValidator:
 
 
 class FakeNormalizer:
-    def normalizeData(self, decoded_payload: dict) -> dict:
+    def normalizeData(self, decoded_payload: dict) -> dict:  # noqa: N802
         return {**decoded_payload, "warnings": []}
 
 
@@ -82,10 +83,13 @@ def valid_hl7_payload() -> str:
 @pytest.fixture
 def valid_fhir_payload() -> str:
     import json
-    return json.dumps({
-        "resourceType": "Patient",
-        "id": "patient-001",
-        "name": [{"family": "Doe", "given": ["John"]}],
-        "gender": "male",
-        "birthDate": "1980-01-01",
-    })
+
+    return json.dumps(
+        {
+            "resourceType": "Patient",
+            "id": "patient-001",
+            "name": [{"family": "Doe", "given": ["John"]}],
+            "gender": "male",
+            "birthDate": "1980-01-01",
+        }
+    )

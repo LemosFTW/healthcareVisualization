@@ -1,4 +1,5 @@
 """Story 3.1 — MllpConnector: MLLP framing, receive(), ACK, Adapter contract."""
+
 import socket
 import time
 
@@ -8,8 +9,8 @@ from healthcare_sdk import Adapter, RawMessage
 from transport.mllp_connector import MLLP_END, MLLP_START, MllpConnector
 
 VALID_HL7 = (
-    r"MSH|^~\&|SendApp|SendFac|RecApp|RecFac|20230601120000||ADT^A01|MSG001|P|2.3" + "\r"
-    "PID|1||12345^^^MRN||Doe^John^A||19800101|M"
+    r"MSH|^~\&|SendApp|SendFac|RecApp|RecFac|20230601120000||ADT^A01|MSG001|P|2.3"
+    "\rPID|1||12345^^^MRN||Doe^John^A||19800101|M"
 ).encode("latin-1")
 
 
@@ -173,7 +174,8 @@ def test_mllp_integration_receive_and_ack():
     """
     Given a running MllpConnector server on a free port
     When a client sends one MLLP-framed HL7v2 message
-    Then receive() must return a valid RawMessage and an MLLP-framed ACK with MSA|AA must be sent back
+    Then receive() must return a valid RawMessage and an MLLP-framed ACK
+    with MSA|AA must be sent back
     """
     port = _get_free_port()
     connector = MllpConnector(host="127.0.0.1", port=port)

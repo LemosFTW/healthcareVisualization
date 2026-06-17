@@ -1,4 +1,5 @@
 """Story 1.8 — POST /messages REST endpoint."""
+
 from unittest.mock import MagicMock
 
 import pytest
@@ -36,7 +37,11 @@ MALFORMED_HL7 = "NOT_HL7_AT_ALL"
 
 
 def _make_engine():
-    return create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False}, poolclass=StaticPool)
+    return create_engine(
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
 
 
 def _build_client(ai_mock=None):
@@ -48,14 +53,26 @@ def _build_client(ai_mock=None):
     if ai_mock:
         normalizer.aiHelper = ai_mock
 
-    usecase = ProcessMessageUsecase(decoder=router, validator=validator, normalizer=normalizer, storage=storage)
+    usecase = ProcessMessageUsecase(
+        decoder=router, validator=validator, normalizer=normalizer, storage=storage
+    )
     controller = RestController()
 
     @controller.app.exception_handler(RequestValidationError)
     async def _val_err(request, exc):
-        return JSONResponse(status_code=422, content={"type": "about:blank", "title": "Unprocessable Content", "status": 422, "detail": str(exc)})
+        return JSONResponse(
+            status_code=422,
+            content={
+                "type": "about:blank",
+                "title": "Unprocessable Content",
+                "status": 422,
+                "detail": str(exc),
+            },
+        )
 
-    controller.add_endpoint("/messages", "POST", create_process_message_handler(usecase))
+    controller.add_endpoint(
+        "/messages", "POST", create_process_message_handler(usecase)
+    )
     return TestClient(controller.app, raise_server_exceptions=False)
 
 
@@ -67,7 +84,9 @@ def test_post_valid_hl7_returns_200_with_stored_status():
     Then HTTP 200 must be returned with status='stored'
     """
     client = _build_client()
-    resp = client.post("/messages", json={"protocol": "hl7v2", "raw_payload": VALID_HL7})
+    resp = client.post(
+        "/messages", json={"protocol": "hl7v2", "raw_payload": VALID_HL7}
+    )
     assert resp.status_code == 200
     assert resp.json()["status"] == STATUS_STORED
 
@@ -80,7 +99,9 @@ def test_post_valid_hl7_response_contains_decoded_payload():
     Then the response body must contain a non-null decoded_payload with MSH key
     """
     client = _build_client()
-    resp = client.post("/messages", json={"protocol": "hl7v2", "raw_payload": VALID_HL7})
+    resp = client.post(
+        "/messages", json={"protocol": "hl7v2", "raw_payload": VALID_HL7}
+    )
     body = resp.json()
     assert "decoded_payload" in body
     assert body["decoded_payload"] is not None
@@ -95,7 +116,9 @@ def test_post_valid_hl7_response_contains_normalized_payload():
     Then the response body must contain a non-null normalized_payload
     """
     client = _build_client()
-    resp = client.post("/messages", json={"protocol": "hl7v2", "raw_payload": VALID_HL7})
+    resp = client.post(
+        "/messages", json={"protocol": "hl7v2", "raw_payload": VALID_HL7}
+    )
     body = resp.json()
     assert "normalized_payload" in body
     assert body["normalized_payload"] is not None
@@ -109,7 +132,9 @@ def test_post_valid_hl7_response_has_empty_errors():
     Then the errors list in the response must be empty
     """
     client = _build_client()
-    resp = client.post("/messages", json={"protocol": "hl7v2", "raw_payload": VALID_HL7})
+    resp = client.post(
+        "/messages", json={"protocol": "hl7v2", "raw_payload": VALID_HL7}
+    )
     assert resp.json()["errors"] == []
 
 
@@ -121,7 +146,9 @@ def test_post_valid_hl7_response_has_warnings_field():
     Then the response must contain a 'warnings' list (empty since no AI helper)
     """
     client = _build_client()
-    resp = client.post("/messages", json={"protocol": "hl7v2", "raw_payload": VALID_HL7})
+    resp = client.post(
+        "/messages", json={"protocol": "hl7v2", "raw_payload": VALID_HL7}
+    )
     body = resp.json()
     assert "warnings" in body
     assert isinstance(body["warnings"], list)
@@ -135,7 +162,9 @@ def test_post_malformed_hl7_returns_200_with_error_status():
     Then HTTP 200 must be returned with status='error'
     """
     client = _build_client()
-    resp = client.post("/messages", json={"protocol": "hl7v2", "raw_payload": MALFORMED_HL7})
+    resp = client.post(
+        "/messages", json={"protocol": "hl7v2", "raw_payload": MALFORMED_HL7}
+    )
     assert resp.status_code == 200
     assert resp.json()["status"] == STATUS_ERROR
 
@@ -148,7 +177,9 @@ def test_post_malformed_hl7_response_has_decode_error():
     Then the errors list must contain at least one error with stage='decode'
     """
     client = _build_client()
-    resp = client.post("/messages", json={"protocol": "hl7v2", "raw_payload": MALFORMED_HL7})
+    resp = client.post(
+        "/messages", json={"protocol": "hl7v2", "raw_payload": MALFORMED_HL7}
+    )
     body = resp.json()
     assert len(body["errors"]) >= 1
     assert "decode" in [e["stage"] for e in body["errors"]]
@@ -210,9 +241,13 @@ def test_post_with_ai_helper_returns_warnings():
     Then the response must have status='stored' and non-empty warnings
     """
     ai_mock = MagicMock()
-    ai_mock.generateResponse.return_value = "ANOMALY: HR^Heart Rate - Heart rate of 0 is clinically impossible"
+    ai_mock.generateResponse.return_value = (
+        "ANOMALY: HR^Heart Rate - Heart rate of 0 is clinically impossible"
+    )
     client = _build_client(ai_mock=ai_mock)
-    resp = client.post("/messages", json={"protocol": "hl7v2", "raw_payload": VALID_HL7_WITH_OBX})
+    resp = client.post(
+        "/messages", json={"protocol": "hl7v2", "raw_payload": VALID_HL7_WITH_OBX}
+    )
     body = resp.json()
     assert body["status"] == STATUS_STORED
     assert len(body["warnings"]) > 0

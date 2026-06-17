@@ -1,4 +1,5 @@
 """Story 1.6 — HealthcareDecoderRouter."""
+
 from unittest.mock import MagicMock
 
 import pytest
@@ -81,7 +82,9 @@ def test_decode_error_message_lists_supported_protocols():
     When decode() is called with an unsupported protocol
     Then the DecodeError message must reference either the protocol or known protocols
     """
-    router = HealthcareDecoderRouter({"hl7v2": _mock_decoder({}), "fhir": _mock_decoder({})})
+    router = HealthcareDecoderRouter(
+        {"hl7v2": _mock_decoder({}), "fhir": _mock_decoder({})}
+    )
     with pytest.raises(DecodeError) as exc_info:
         router.decode(_raw("dicom"))
     error_message = str(exc_info.value)

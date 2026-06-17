@@ -1,4 +1,5 @@
 """Story 1.5 — HealthcareMessageNormalizer with anomaly detection."""
+
 from unittest.mock import MagicMock
 
 import pytest
@@ -49,12 +50,14 @@ DECODED_PAYLOAD = {
 
 PAYLOAD_WITH_SUSPICIOUS_HR = {
     **DECODED_PAYLOAD,
-    "OBX": [{**DECODED_PAYLOAD["OBX"][0], "observation_value": "0", "abnormal_flags": ""}],
+    "OBX": [
+        {**DECODED_PAYLOAD["OBX"][0], "observation_value": "0", "abnormal_flags": ""}
+    ],
 }
 
 
 @pytest.mark.p0
-def test_normalizeData_returns_dict():
+def test_normalize_data_returns_dict():  # noqa: N802
     """
     Given a valid decoded HL7v2 payload
     When normalizeData() is called
@@ -87,7 +90,8 @@ def test_normalized_contains_identifiers_block():
     """
     Given a decoded payload with MSH segment
     When normalizeData() is called
-    Then the result must contain an 'identifiers' block with message_control_id and app/facility
+    Then the result must contain an 'identifiers' block
+    with message_control_id and app/facility
     """
     normalizer = HealthcareMessageNormalizer()
     result = normalizer.normalizeData(DECODED_PAYLOAD)
@@ -166,7 +170,9 @@ def test_anomaly_detected_adds_warning():
     Then one warning containing the anomaly description must be present
     """
     ai_mock = MagicMock()
-    ai_mock.generateResponse.return_value = "ANOMALY: HR^Heart Rate - Heart rate of 0 is clinically impossible"
+    ai_mock.generateResponse.return_value = (
+        "ANOMALY: HR^Heart Rate - Heart rate of 0 is clinically impossible"
+    )
     normalizer = HealthcareMessageNormalizer()
     normalizer.aiHelper = ai_mock
     result = normalizer.normalizeData(PAYLOAD_WITH_SUSPICIOUS_HR)

@@ -77,26 +77,26 @@ def build_engine() -> object:
 def bootstrap():
     """Compose concrete components and validate contracts via register_components."""
     engine = build_engine()
-    storage : HealthCareStorage = PostgreSqlStorage(engine)
-    hl7_decoder : Decoder = Hl7V2Decoder()
-    fhir_decoder : Decoder = FhirDecoder()
-    router : Decoder = HealthcareDecoderRouter(
+    storage: HealthCareStorage = PostgreSqlStorage(engine)
+    hl7_decoder: Decoder = Hl7V2Decoder()
+    fhir_decoder: Decoder = FhirDecoder()
+    router: Decoder = HealthcareDecoderRouter(
         {"hl7v2": hl7_decoder, "fhir": fhir_decoder}
     )
-    validator : ValidatorTemplate = Hl7Validator()
-    ai_helper : AiHelper = _build_ai_helper()
-    normalizer : NormalizerTemplate = HealthcareMessageNormalizer(ai_helper=ai_helper)
+    validator: ValidatorTemplate = Hl7Validator()
+    ai_helper: AiHelper = _build_ai_helper()
+    normalizer: NormalizerTemplate = HealthcareMessageNormalizer(ai_helper=ai_helper)
     mllp_port = int(os.getenv("MLLP_PORT", "2575"))
-    mllp_connector : Adapter = MllpConnector(port=mllp_port)
+    mllp_connector: Adapter = MllpConnector(port=mllp_port)
 
-    process_usecase : HealthCareUsecase = ProcessMessageUsecase(
+    process_usecase: HealthCareUsecase = ProcessMessageUsecase(
         decoder=router,
         validator=validator,
         normalizer=normalizer,
         storage=storage,
     )
-    commit_usecase : HealthCareUsecase = CommitMessageUsecase(storage=storage)
-    query_usecase : HealthCareUsecase = QueryMessageUsecase(storage=storage)
+    commit_usecase: HealthCareUsecase = CommitMessageUsecase(storage=storage)
+    query_usecase: HealthCareUsecase = QueryMessageUsecase(storage=storage)
     components = register_components(
         adapters=[mllp_connector],
         usecases=[commit_usecase, query_usecase, process_usecase],

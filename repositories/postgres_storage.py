@@ -12,7 +12,8 @@ from sqlalchemy.orm import Mapped, Session, mapped_column
 
 
 class _HealthcareMessageLog(Base):
-    """ORM model that persists all MessageEnvelope fields, including payloads and errors."""
+    """ORM model that persists all MessageEnvelope fields,
+    including payloads and errors."""
 
     __tablename__ = "healthcare_message_log"
 
@@ -68,7 +69,8 @@ class _HealthcareMessageLog(Base):
 
 
 class PostgreSqlStorage(HealthCareStorage):
-    """Project-level storage implementing HealthCareStorage with full envelope persistence.
+    """Project-level storage implementing HealthCareStorage
+    with full envelope persistence.
 
     Stores all MessageEnvelope fields (decoded_payload, normalized_payload, errors).
     Uses Base.metadata.create_all(engine) to create tables if they do not exist.
@@ -86,7 +88,8 @@ class PostgreSqlStorage(HealthCareStorage):
         with Session(self._engine) as session:
             log = _HealthcareMessageLog.from_envelope(envelope)
             # The SDK calls save() before setting STATUS_STORED on the envelope.
-            # Upgrade normalized → stored here so the persisted record reflects final state.
+            # Upgrade normalized → stored here so the persisted record
+            # reflects final state.
             if log.status == STATUS_NORMALIZED:
                 log.status = STATUS_STORED
             session.merge(log)

@@ -1,4 +1,5 @@
 """Story 2.1 — FhirDecoder."""
+
 import json
 
 import pytest

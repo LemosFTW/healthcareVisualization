@@ -1,4 +1,5 @@
 """Story 1.7 — PostgreSqlStorage with full MessageEnvelope persistence."""
+
 import pytest
 from healthcare_sdk.contracts import (
     STATUS_ERROR,
@@ -36,12 +37,14 @@ def _make_error_envelope(msg_id: str = "env-err-001") -> MessageEnvelope:
         raw_payload="BAD PAYLOAD",
         status=STATUS_ERROR,
     )
-    env.errors.append(ErrorDetail(
-        code="decode_error",
-        message="MSH segment not found",
-        stage="decode",
-        context={"raw_id": msg_id},
-    ))
+    env.errors.append(
+        ErrorDetail(
+            code="decode_error",
+            message="MSH segment not found",
+            stage="decode",
+            context={"raw_id": msg_id},
+        )
+    )
     return env
 
 
@@ -157,12 +160,14 @@ def test_save_multiple_errors_all_persisted():
     """
     storage = PostgreSqlStorage(_make_engine())
     env = _make_error_envelope("env-err-002")
-    env.errors.append(ErrorDetail(
-        code="validation_error",
-        message="Missing message_type",
-        stage="validate",
-        context={"field": "message_type"},
-    ))
+    env.errors.append(
+        ErrorDetail(
+            code="validation_error",
+            message="Missing message_type",
+            stage="validate",
+            context={"field": "message_type"},
+        )
+    )
     storage.save(env)
     result = storage.read({"id": "env-err-002"})
     assert len(result["errors"]) == 2

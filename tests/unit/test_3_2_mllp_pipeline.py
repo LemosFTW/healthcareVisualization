@@ -1,4 +1,5 @@
 """Story 3.2 — MLLP Pipeline Integration."""
+
 import threading
 import time
 from unittest.mock import MagicMock
@@ -31,9 +32,15 @@ def _make_stored_envelope(msg_id: str = "test-001") -> MessageEnvelope:
 
 def _make_error_envelope(msg_id: str = "test-err-001") -> MessageEnvelope:
     env = MessageEnvelope(
-        id=msg_id, protocol="HL7v2", message_type="", raw_payload="BAD", status=STATUS_ERROR,
+        id=msg_id,
+        protocol="HL7v2",
+        message_type="",
+        raw_payload="BAD",
+        status=STATUS_ERROR,
     )
-    env.errors.append(ErrorDetail(code="decode_error", message="MSH not found", stage="decode"))
+    env.errors.append(
+        ErrorDetail(code="decode_error", message="MSH not found", stage="decode")
+    )
     return env
 
 
@@ -63,8 +70,8 @@ def test_pipeline_delegates_error_persistence_to_usecase():
     """
     Given a pipeline where usecase.execute() returns a STATUS_ERROR envelope
     When the loop processes the message
-    Then usecase.execute() must be called — error persistence is the usecase's responsibility,
-    not the pipeline loop's.
+    Then usecase.execute() must be called — error persistence is the
+    usecase's responsibility, not the pipeline loop's.
     """
     error_env = _make_error_envelope()
     connector = MagicMock()
@@ -99,6 +106,7 @@ def test_ack_sent_before_pipeline_runs():
     Then the method must exist, confirming ACK is sent synchronously before queueing
     """
     from transport.mllp_connector import MllpConnector
+
     connector = MllpConnector()
     assert hasattr(connector, "_handle_client")
 

@@ -1,4 +1,5 @@
 """Story 1.2 — GeminiAiHelper."""
+
 import os
 import sys
 import types
@@ -18,7 +19,9 @@ def _make_genai_mock(response_text: str = "mocked response"):
 def _patch_genai(genai_mock):
     google_pkg = types.ModuleType("google")
     google_pkg.generativeai = genai_mock
-    return patch.dict(sys.modules, {"google": google_pkg, "google.generativeai": genai_mock})
+    return patch.dict(
+        sys.modules, {"google": google_pkg, "google.generativeai": genai_mock}
+    )
 
 
 @pytest.mark.p0
@@ -29,12 +32,15 @@ def test_generate_response_returns_string():
     Then the text returned by the Gemini REST API must be returned as a string
     """
     from tools.gemini_ai_helper_strategy import GeminiAiHelper
+
     fake_resp = MagicMock()
     fake_resp.raise_for_status = MagicMock()
     fake_resp.json.return_value = {
         "candidates": [{"content": {"parts": [{"text": "Hello from Gemini"}]}}]
     }
-    with patch("tools.gemini_ai_helper_strategy.httpx.post", return_value=fake_resp) as mock_post:
+    with patch(
+        "tools.gemini_ai_helper_strategy.httpx.post", return_value=fake_resp
+    ) as mock_post:
         helper = GeminiAiHelper(api_key="fake-key")
         result = helper.generateResponse("Say hello")
     assert result == "Hello from Gemini"
@@ -52,6 +58,7 @@ def test_generate_response_raises_runtime_error_on_api_failure():
     model_instance.generate_content.side_effect = Exception("internal sdk error detail")
     with _patch_genai(genai_mock):
         from tools.gemini_ai_helper_strategy import GeminiAiHelper
+
         helper = GeminiAiHelper(api_key="fake-key")
         with pytest.raises(RuntimeError, match="Gemini API request failed"):
             helper.generateResponse("fail this")
@@ -67,6 +74,7 @@ def test_init_raises_if_api_key_missing():
     genai_mock, _ = _make_genai_mock()
     with _patch_genai(genai_mock):
         from tools.gemini_ai_helper_strategy import GeminiAiHelper
+
         with patch.dict(os.environ, {}, clear=True):
             os.environ.pop("GEMINI_API_KEY", None)
             with pytest.raises(ValueError, match="GEMINI_API_KEY"):
@@ -81,6 +89,7 @@ def test_api_key_read_from_env():
     Then the helper must embed the env var value in its API URL
     """
     from tools.gemini_ai_helper_strategy import GeminiAiHelper
+
     with patch.dict(os.environ, {"GEMINI_API_KEY": "env-key-value"}):
         helper = GeminiAiHelper()
     assert "env-key-value" in helper._url
@@ -94,6 +103,7 @@ def test_google_generativeai_not_imported_outside_helper():
     Then the import must only appear in gemini_ai_helper_strategy.py
     """
     import os as _os
+
     base = _os.path.join(_os.path.dirname(_os.path.dirname(_os.path.dirname(__file__))))
     layers = ("domain", "infrastructure", "transport", "usecases", "tools")
     violations = []
@@ -112,4 +122,6 @@ def test_google_generativeai_not_imported_outside_helper():
                     source = f.read()
                 if "google.generativeai" in source or "google-generativeai" in source:
                     violations.append(fpath)
-    assert not violations, f"google-generativeai imported outside GeminiAiHelper: {violations}"
+    assert not violations, (
+        f"google-generativeai imported outside GeminiAiHelper: {violations}"
+    )

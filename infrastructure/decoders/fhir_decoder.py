@@ -58,7 +58,8 @@ class FhirDecoder(Decoder):
             result["total"] = data.get("total", 0)
             result["resources"] = self._extract_bundle_resources(data)
         else:
-            # Standalone resource — include all payload fields except those already extracted
+            # Standalone resource — include all payload fields
+            # except those already extracted
             for key, value in data.items():
                 if key not in ("resourceType", "id", "meta"):
                     result[key] = value

@@ -1,4 +1,5 @@
 """Story 1.9 — GET /messages/{id} endpoint."""
+
 import pytest
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
@@ -29,7 +30,11 @@ MALFORMED_HL7 = "GARBAGE"
 
 
 def _make_engine():
-    return create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False}, poolclass=StaticPool)
+    return create_engine(
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
 
 
 def _build_client():
@@ -37,17 +42,32 @@ def _build_client():
     storage = PostgreSqlStorage(engine)
     router = HealthcareDecoderRouter({"hl7v2": Hl7V2Decoder()})
     process_usecase = ProcessMessageUsecase(
-        decoder=router, validator=Hl7Validator(), normalizer=HealthcareMessageNormalizer(), storage=storage
+        decoder=router,
+        validator=Hl7Validator(),
+        normalizer=HealthcareMessageNormalizer(),
+        storage=storage,
     )
     query_usecase = QueryMessageUsecase(storage=storage)
     controller = RestController()
 
     @controller.app.exception_handler(RequestValidationError)
     async def _val_err(request, exc):
-        return JSONResponse(status_code=422, content={"type": "about:blank", "title": "Unprocessable Content", "status": 422, "detail": str(exc)})
+        return JSONResponse(
+            status_code=422,
+            content={
+                "type": "about:blank",
+                "title": "Unprocessable Content",
+                "status": 422,
+                "detail": str(exc),
+            },
+        )
 
-    controller.add_endpoint("/messages", "POST", create_process_message_handler(process_usecase))
-    controller.add_endpoint("/messages/{id}", "GET", create_query_message_handler(query_usecase))
+    controller.add_endpoint(
+        "/messages", "POST", create_process_message_handler(process_usecase)
+    )
+    controller.add_endpoint(
+        "/messages/{id}", "GET", create_query_message_handler(query_usecase)
+    )
     return TestClient(controller.app, raise_server_exceptions=False)
 
 
@@ -59,7 +79,10 @@ def test_get_existing_message_returns_200():
     Then HTTP 200 must be returned
     """
     client = _build_client()
-    client.post("/messages", json={"protocol": "hl7v2", "raw_payload": VALID_HL7, "id": "msg-get-001"})
+    client.post(
+        "/messages",
+        json={"protocol": "hl7v2", "raw_payload": VALID_HL7, "id": "msg-get-001"},
+    )
     assert client.get("/messages/msg-get-001").status_code == 200
 
 
@@ -71,7 +94,10 @@ def test_get_existing_message_contains_id():
     Then the response body must contain id='msg-get-002'
     """
     client = _build_client()
-    client.post("/messages", json={"protocol": "hl7v2", "raw_payload": VALID_HL7, "id": "msg-get-002"})
+    client.post(
+        "/messages",
+        json={"protocol": "hl7v2", "raw_payload": VALID_HL7, "id": "msg-get-002"},
+    )
     assert client.get("/messages/msg-get-002").json()["id"] == "msg-get-002"
 
 
@@ -83,7 +109,10 @@ def test_get_existing_message_contains_status():
     Then the response status must be 'stored'
     """
     client = _build_client()
-    client.post("/messages", json={"protocol": "hl7v2", "raw_payload": VALID_HL7, "id": "msg-get-003"})
+    client.post(
+        "/messages",
+        json={"protocol": "hl7v2", "raw_payload": VALID_HL7, "id": "msg-get-003"},
+    )
     assert client.get("/messages/msg-get-003").json()["status"] == STATUS_STORED
 
 
@@ -95,7 +124,10 @@ def test_get_existing_message_contains_decoded_payload():
     Then the response must contain a non-null decoded_payload
     """
     client = _build_client()
-    client.post("/messages", json={"protocol": "hl7v2", "raw_payload": VALID_HL7, "id": "msg-get-004"})
+    client.post(
+        "/messages",
+        json={"protocol": "hl7v2", "raw_payload": VALID_HL7, "id": "msg-get-004"},
+    )
     body = client.get("/messages/msg-get-004").json()
     assert "decoded_payload" in body
     assert body["decoded_payload"] is not None
@@ -109,7 +141,10 @@ def test_get_existing_message_contains_normalized_payload():
     Then the response must contain a non-null normalized_payload
     """
     client = _build_client()
-    client.post("/messages", json={"protocol": "hl7v2", "raw_payload": VALID_HL7, "id": "msg-get-005"})
+    client.post(
+        "/messages",
+        json={"protocol": "hl7v2", "raw_payload": VALID_HL7, "id": "msg-get-005"},
+    )
     body = client.get("/messages/msg-get-005").json()
     assert "normalized_payload" in body
     assert body["normalized_payload"] is not None
@@ -123,7 +158,10 @@ def test_get_existing_message_contains_warnings_and_errors():
     Then the response must include 'warnings' and 'errors' as lists
     """
     client = _build_client()
-    client.post("/messages", json={"protocol": "hl7v2", "raw_payload": VALID_HL7, "id": "msg-get-006"})
+    client.post(
+        "/messages",
+        json={"protocol": "hl7v2", "raw_payload": VALID_HL7, "id": "msg-get-006"},
+    )
     body = client.get("/messages/msg-get-006").json()
     assert isinstance(body.get("warnings"), list)
     assert isinstance(body.get("errors"), list)
@@ -137,7 +175,10 @@ def test_get_error_envelope_preserves_errors():
     Then status must be 'error' and errors[0].stage must be 'decode'
     """
     client = _build_client()
-    client.post("/messages", json={"protocol": "hl7v2", "raw_payload": MALFORMED_HL7, "id": "msg-err-001"})
+    client.post(
+        "/messages",
+        json={"protocol": "hl7v2", "raw_payload": MALFORMED_HL7, "id": "msg-err-001"},
+    )
     body = client.get("/messages/msg-err-001").json()
     assert body["status"] == STATUS_ERROR
     assert len(body["errors"]) >= 1
@@ -160,7 +201,8 @@ def test_get_404_response_is_rfc9457():
     """
     Given a non-existent message id
     When GET returns 404
-    Then the response body must conform to RFC 9457 Problem Details format with id in detail
+    Then the response body must conform to RFC 9457 Problem Details
+    format with id in detail
     """
     client = _build_client()
     body = client.get("/messages/no-such-id").json()

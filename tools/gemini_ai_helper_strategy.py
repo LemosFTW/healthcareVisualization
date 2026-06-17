@@ -23,7 +23,7 @@ class GeminiAiHelper(AiHelper):
             )
         self._url = f"{_GEMINI_BASE}?key={resolved_key}"
 
-    def generateResponse(self, prompt: str) -> str:
+    def generateResponse(self, prompt: str) -> str:  # noqa: N802
         try:
             resp = httpx.post(
                 self._url,

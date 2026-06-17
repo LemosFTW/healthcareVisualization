@@ -1,4 +1,5 @@
 """Story 1.4 — Hl7Validator."""
+
 import copy
 
 import pytest
@@ -128,7 +129,8 @@ def test_missing_patient_name_returns_error():
 @pytest.mark.p0
 def test_missing_all_patient_identifiers_returns_error():
     """
-    Given a decoded payload with both PID.patient_id and PID.patient_identifier_list empty
+    Given a decoded payload with both PID.patient_id
+    and PID.patient_identifier_list empty
     When validate() is called
     Then is_valid must be False with a 'missing_patient_identifier' error
     """
@@ -153,7 +155,9 @@ def test_patient_id_field_alone_satisfies_identifier_check():
     payload["PID"]["patient_identifier_list"] = ""
     validator = Hl7Validator()
     result = validator.validate(payload)
-    patient_id_errors = [e for e in result.errors if e.code == "missing_patient_identifier"]
+    patient_id_errors = [
+        e for e in result.errors if e.code == "missing_patient_identifier"
+    ]
     assert len(patient_id_errors) == 0
 
 

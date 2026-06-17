@@ -1,4 +1,5 @@
 """Story 3.3 — Concurrent REST and MLLP Servers."""
+
 import socket
 import threading
 import time
@@ -42,7 +43,11 @@ def _get_free_port() -> int:
 
 
 def _make_engine():
-    return create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False}, poolclass=StaticPool)
+    return create_engine(
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
 
 
 def _build_system():
@@ -50,7 +55,10 @@ def _build_system():
     storage = PostgreSqlStorage(engine)
     router = HealthcareDecoderRouter({"hl7v2": Hl7V2Decoder(), "fhir": FhirDecoder()})
     process_usecase = ProcessMessageUsecase(
-        decoder=router, validator=Hl7Validator(), normalizer=HealthcareMessageNormalizer(), storage=storage
+        decoder=router,
+        validator=Hl7Validator(),
+        normalizer=HealthcareMessageNormalizer(),
+        storage=storage,
     )
     query_usecase = QueryMessageUsecase(storage=storage)
     mllp_port = _get_free_port()
@@ -59,10 +67,22 @@ def _build_system():
 
     @controller.app.exception_handler(RequestValidationError)
     async def _val_err(request, exc):
-        return JSONResponse(status_code=422, content={"type": "about:blank", "title": "Unprocessable Content", "status": 422, "detail": str(exc)})
+        return JSONResponse(
+            status_code=422,
+            content={
+                "type": "about:blank",
+                "title": "Unprocessable Content",
+                "status": 422,
+                "detail": str(exc),
+            },
+        )
 
-    controller.add_endpoint("/messages", "POST", create_process_message_handler(process_usecase))
-    controller.add_endpoint("/messages/{id}", "GET", create_query_message_handler(query_usecase))
+    controller.add_endpoint(
+        "/messages", "POST", create_process_message_handler(process_usecase)
+    )
+    controller.add_endpoint(
+        "/messages/{id}", "GET", create_query_message_handler(query_usecase)
+    )
     return process_usecase, mllp, mllp_port, controller
 
 
@@ -127,7 +147,10 @@ def test_rest_processes_while_mllp_server_is_running():
     _wait_for_port("127.0.0.1", mllp_port)
     try:
         client = TestClient(controller.app, raise_server_exceptions=False)
-        resp = client.post("/messages", json={"protocol": "hl7v2", "raw_payload": VALID_HL7.decode("latin-1")})
+        resp = client.post(
+            "/messages",
+            json={"protocol": "hl7v2", "raw_payload": VALID_HL7.decode("latin-1")},
+        )
         assert resp.status_code == 200
         assert resp.json()["status"] == STATUS_STORED
     finally:
@@ -152,7 +175,14 @@ def test_mllp_and_rest_messages_processed_independently():
 
     def _send_rest():
         try:
-            resp = client.post("/messages", json={"protocol": "hl7v2", "raw_payload": VALID_HL7.decode("latin-1"), "id": "rest-concurrent"})
+            resp = client.post(
+                "/messages",
+                json={
+                    "protocol": "hl7v2",
+                    "raw_payload": VALID_HL7.decode("latin-1"),
+                    "id": "rest-concurrent",
+                },
+            )
             if resp.json()["status"] != STATUS_STORED:
                 errors.append(f"REST status={resp.json()['status']}")
         except Exception as exc:
@@ -169,8 +199,10 @@ def test_mllp_and_rest_messages_processed_independently():
     try:
         t1 = threading.Thread(target=_send_rest)
         t2 = threading.Thread(target=_send_mllp_msg)
-        t1.start(); t2.start()
-        t1.join(timeout=5.0); t2.join(timeout=5.0)
+        t1.start()
+        t2.start()
+        t1.join(timeout=5.0)
+        t2.join(timeout=5.0)
         assert not errors, f"Concurrent channel errors: {errors}"
     finally:
         mllp.stop()
@@ -189,7 +221,10 @@ def test_mllp_failure_does_not_affect_rest():
     mllp.stop()
 
     client = TestClient(controller.app, raise_server_exceptions=False)
-    resp = client.post("/messages", json={"protocol": "hl7v2", "raw_payload": VALID_HL7.decode("latin-1")})
+    resp = client.post(
+        "/messages",
+        json={"protocol": "hl7v2", "raw_payload": VALID_HL7.decode("latin-1")},
+    )
     assert resp.status_code == 200
     assert resp.json()["status"] == STATUS_STORED
 
@@ -199,7 +234,8 @@ def test_main_registers_both_channels():
     """
     Given the app module
     When inspecting main() and run_mllp_worker() source code
-    Then main() must launch a multiprocessing.Process with run_mllp_worker, register REST endpoints and start the REST server;
+    Then main() must launch a multiprocessing.Process with run_mllp_worker,
+    register REST endpoints and start the REST server;
     and run_mllp_worker() must start the MLLP server and pipeline
     """
     import inspect
@@ -209,10 +245,14 @@ def test_main_registers_both_channels():
     main_src = inspect.getsource(app_module.main)
     worker_src = inspect.getsource(app_module.run_mllp_worker)
 
-    assert "multiprocessing.Process" in main_src, "MLLP worker not launched as Process in main()"
+    assert "multiprocessing.Process" in main_src, (
+        "MLLP worker not launched as Process in main()"
+    )
     assert "run_mllp_worker" in main_src, "run_mllp_worker not referenced in main()"
     assert "executeServer" in main_src, "REST server not started in main()"
     assert "add_endpoint" in main_src, "REST endpoints not registered in main()"
 
-    assert "start_in_background" in worker_src, "MLLP server not started in run_mllp_worker()"
+    assert "start_in_background" in worker_src, (
+        "MLLP server not started in run_mllp_worker()"
+    )
     assert "pipeline" in worker_src, "MLLP pipeline not started in run_mllp_worker()"

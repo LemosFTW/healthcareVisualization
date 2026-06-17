@@ -1,4 +1,5 @@
 """Story 1.3 — Hl7V2Decoder."""
+
 import pytest
 from healthcare_sdk import RawMessage
 from healthcare_sdk.errors import DecodeError
@@ -6,7 +7,8 @@ from healthcare_sdk.errors import DecodeError
 from infrastructure.decoders.hl7v2_decoder import Hl7V2Decoder
 
 VALID_HL7 = (
-    r"MSH|^~\&|SendApp|SendFac|RecApp|RecFac|20230601120000||ADT^A01|MSG001|P|2.3" + "\r"
+    r"MSH|^~\&|SendApp|SendFac|RecApp|RecFac|20230601120000||ADT^A01|MSG001|P|2.3"
+    + "\r"
     "PID|1||12345^^^MRN||Doe^John^A||19800101|M|||123 Main St^^Springfield^IL^62701\r"
     "OBR|1|ORD001|LAB001|CBC^Complete Blood Count|||20230601100000\r"
     "OBX|1|NM|WBC^White Blood Cell Count||7.5|10^3/uL|4.5-11.0|N||F\r"

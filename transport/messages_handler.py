@@ -1,4 +1,5 @@
-"""REST handler for POST /messages — processes a raw message through the full pipeline."""
+"""REST handler for POST /messages — processes a raw message through the pipeline."""
+
 from __future__ import annotations
 
 import uuid
@@ -59,7 +60,9 @@ def _serialize_stored(record: Dict[str, Any]) -> Dict[str, Any]:
         "normalized_payload": normalized,
         "warnings": warnings,
         "errors": record.get("errors") or [],
-        "created_at": created_at.isoformat() if hasattr(created_at, "isoformat") else str(created_at or ""),
+        "created_at": created_at.isoformat()
+        if hasattr(created_at, "isoformat")
+        else str(created_at or ""),
     }
 
 

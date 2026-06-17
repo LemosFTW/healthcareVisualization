@@ -1,4 +1,5 @@
 """MLLP pipeline integration — bridges MllpConnector.receive() to a usecase."""
+
 from __future__ import annotations
 
 import logging

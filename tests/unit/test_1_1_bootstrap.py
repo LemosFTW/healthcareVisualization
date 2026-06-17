@@ -1,4 +1,5 @@
 """Story 1.1 — Project Setup & Bootstrap."""
+
 import os
 import sys
 import types
@@ -30,7 +31,9 @@ def _genai_mock_ctx():
     genai_mock.GenerativeModel.return_value = MagicMock()
     google_pkg = types.ModuleType("google")
     google_pkg.generativeai = genai_mock
-    return patch.dict(sys.modules, {"google": google_pkg, "google.generativeai": genai_mock})
+    return patch.dict(
+        sys.modules, {"google": google_pkg, "google.generativeai": genai_mock}
+    )
 
 
 class _InvalidComponent:
@@ -61,6 +64,7 @@ def test_register_components_succeeds_with_valid_components():
     with _genai_mock_ctx(), patch.dict(os.environ, {"GEMINI_API_KEY": "test-key"}):
         from healthcare_sdk import PostgreSqlStorage
         from sqlalchemy import create_engine
+
         engine = create_engine("sqlite:///:memory:")
         storage = PostgreSqlStorage(engine)
         components = register_components(
@@ -113,11 +117,14 @@ def test_clean_architecture_layers_exist():
     """
     Given the project root
     When checking for clean architecture layer directories
-    Then domain/, usecases/, infrastructure/ and transport/ must all exist with __init__.py
+    Then domain/, usecases/, infrastructure/ and transport/
+    must all exist with __init__.py
     """
     for layer in ("domain", "usecases", "infrastructure", "transport"):
         assert (BASE / layer).is_dir(), f"Missing layer: {layer}"
-        assert (BASE / layer / "__init__.py").is_file(), f"Missing __init__.py in {layer}"
+        assert (BASE / layer / "__init__.py").is_file(), (
+            f"Missing __init__.py in {layer}"
+        )
 
 
 @pytest.mark.p0
@@ -129,9 +136,16 @@ def test_domain_layer_has_no_infrastructure_imports():
     """
     domain_init = BASE / "domain" / "__init__.py"
     source = domain_init.read_text()
-    forbidden = ("from infrastructure", "import infrastructure", "from transport", "import transport")
+    forbidden = (
+        "from infrastructure",
+        "import infrastructure",
+        "from transport",
+        "import transport",
+    )
     for forbidden_import in forbidden:
-        assert forbidden_import not in source, f"domain layer contains forbidden import: {forbidden_import}"
+        assert forbidden_import not in source, (
+            f"domain layer contains forbidden import: {forbidden_import}"
+        )
 
 
 @pytest.mark.p0
@@ -144,6 +158,7 @@ def test_bootstrap_function_runs_without_error():
     os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
     with _genai_mock_ctx(), patch.dict(os.environ, {"GEMINI_API_KEY": "test-key"}):
         from app import bootstrap
+
         components, process_usecase, commit_usecase, query_usecase, mllp = bootstrap()
     assert components is not None
     assert process_usecase is not None
