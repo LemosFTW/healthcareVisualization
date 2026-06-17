@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 from healthcare_sdk import ValidationResult, ValidatorTemplate
 from healthcare_sdk.contracts import ErrorDetail
@@ -26,6 +26,24 @@ class Hl7Validator(ValidatorTemplate):
     """
 
     def validate(self, decoded_payload: dict) -> ValidationResult:
+        type_error = self._check_payload_type(decoded_payload)
+        if type_error:
+            return type_error
+
+        errors: List[ErrorDetail] = []
+
+        msh_result = self._resolve_msh_segment(decoded_payload, errors)
+        if msh_result is not None:
+            return msh_result
+
+        self._validate_msh_fields(decoded_payload["MSH"], errors)
+
+        if "PID" in decoded_payload:
+            self._validate_pid_fields(decoded_payload["PID"], errors)
+
+        return ValidationResult(is_valid=len(errors) == 0, errors=errors)
+
+    def _check_payload_type(self, decoded_payload: dict) -> Optional[ValidationResult]:
         if not isinstance(decoded_payload, dict):
             return ValidationResult(
                 is_valid=False,
@@ -36,23 +54,28 @@ class Hl7Validator(ValidatorTemplate):
                     context={"actual_type": type(decoded_payload).__name__},
                 )],
             )
+        return None
 
-        errors: List[ErrorDetail] = []
+    def _resolve_msh_segment(
+        self, decoded_payload: dict, errors: List[ErrorDetail]
+    ) -> Optional[ValidationResult]:
+        """Returns a terminal ValidationResult when MSH is absent, or None to continue.
+        """
+        if "MSH" in decoded_payload:
+            return None
 
-        if "MSH" not in decoded_payload:
-            # FHIR resources (and other non-HL7 formats) don't have MSH — pass through.
-            # Only HL7 payloads that lack MSH entirely are considered invalid here.
-            if "resourceType" in decoded_payload:
-                return ValidationResult(is_valid=True, errors=[])
-            errors.append(ErrorDetail(
-                code="missing_segment",
-                message="MSH segment is required but absent from decoded payload",
-                stage="validate",
-                context={"segment": "MSH"},
-            ))
-            return ValidationResult(is_valid=False, errors=errors)
+        if "resourceType" in decoded_payload:
+            return ValidationResult(is_valid=True, errors=[])
 
-        msh = decoded_payload["MSH"]
+        errors.append(ErrorDetail(
+            code="missing_segment",
+            message="MSH segment is required but absent from decoded payload",
+            stage="validate",
+            context={"segment": "MSH"},
+        ))
+        return ValidationResult(is_valid=False, errors=errors)
+
+    def _validate_msh_fields(self, msh: dict, errors: List[ErrorDetail]) -> None:
         for field_name, display_name in _MSH_REQUIRED:
             value = msh.get(field_name, "")
             if not (isinstance(value, str) and value.strip()):
@@ -63,32 +86,34 @@ class Hl7Validator(ValidatorTemplate):
                     context={"segment": "MSH", "field": field_name},
                 ))
 
-        # PID validation — only when PID segment is present
-        if "PID" in decoded_payload:
-            pid = decoded_payload["PID"]
+    def _validate_pid_fields(self, pid: dict, errors: List[ErrorDetail]) -> None:
+        self._check_patient_identifier(pid, errors)
+        self._check_pid_required_fields(pid, errors)
 
-            # At least one patient identifier (PID.2 or PID.3) must be present
-            patient_id = pid.get("patient_id", "") or ""
-            patient_id_list = pid.get("patient_identifier_list", "") or ""
-            if not patient_id.strip() and not patient_id_list.strip():
+    def _check_patient_identifier(self, pid: dict, errors: List[ErrorDetail]) -> None:
+        patient_id = pid.get("patient_id", "") or ""
+        patient_id_list = pid.get("patient_identifier_list", "") or ""
+        if not patient_id.strip() and not patient_id_list.strip():
+            errors.append(ErrorDetail(
+                code="missing_patient_identifier",
+                message=(
+                    "At least one patient identifier is required: "
+                    "PID.2 (patient_id) or PID.3 (patient_identifier_list)"
+                ),
+                stage="validate",
+                context={
+                    "segment": "PID",
+                    "fields": ["patient_id", "patient_identifier_list"],
+                },
+            ))
+
+    def _check_pid_required_fields(self, pid: dict, errors: List[ErrorDetail]) -> None:
+        for field_name, display_name in _PID_REQUIRED:
+            value = pid.get(field_name, "") or ""
+            if not value.strip():
                 errors.append(ErrorDetail(
-                    code="missing_patient_identifier",
-                    message=(
-                        "At least one patient identifier is required: "
-                        "PID.2 (patient_id) or PID.3 (patient_identifier_list)"
-                    ),
+                    code="missing_required_field",
+                    message=f"Required field {display_name} is missing or empty",
                     stage="validate",
-                    context={"segment": "PID", "fields": ["patient_id", "patient_identifier_list"]},
+                    context={"segment": "PID", "field": field_name},
                 ))
-
-            for field_name, display_name in _PID_REQUIRED:
-                value = pid.get(field_name, "") or ""
-                if not value.strip():
-                    errors.append(ErrorDetail(
-                        code="missing_required_field",
-                        message=f"Required field {display_name} is missing or empty",
-                        stage="validate",
-                        context={"segment": "PID", "field": field_name},
-                    ))
-
-        return ValidationResult(is_valid=len(errors) == 0, errors=errors)
