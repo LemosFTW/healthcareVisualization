@@ -86,6 +86,29 @@ def create_query_message_handler(usecase):
     return handler
 
 
+def create_commit_message_handler(usecase):
+    """Handler for POST /messages/{id}/commit."""
+
+    async def handler(id: str) -> JSONResponse:
+        found = usecase.execute(id)
+        if not found:
+            return JSONResponse(
+                status_code=404,
+                content={
+                    "type": "about:blank",
+                    "title": "Not Found",
+                    "status": 404,
+                    "detail": f"Message with id '{id}' was not found",
+                },
+            )
+        return JSONResponse(
+            content={"id": id, "review_status": "approved"},
+            status_code=200,
+        )
+
+    return handler
+
+
 def create_process_message_handler(usecase):
     """Return an async FastAPI handler for POST /messages bound to *usecase*."""
 

@@ -28,6 +28,7 @@ from repositories import PostgreSqlStorage
 from tools import GeminiAiHelper
 from transport import MllpConnector
 from transport.messages_handler import (
+    create_commit_message_handler,
     create_process_message_handler,
     create_query_message_handler,
 )
@@ -125,7 +126,7 @@ def main():
     )
     mllp_process.start()
 
-    _components, process_usecase, _commit_usecase, query_usecase, _mllp = bootstrap()
+    _components, process_usecase, commit_usecase, query_usecase, _mllp = bootstrap()
 
     rest_controller = RestController()
     _register_exception_handlers(rest_controller.app)
@@ -134,6 +135,9 @@ def main():
     )
     rest_controller.add_endpoint(
         "/messages/{id}", "GET", create_query_message_handler(query_usecase)
+    )
+    rest_controller.add_endpoint(
+        "/messages/{id}/commit", "POST", create_commit_message_handler(commit_usecase)
     )
 
     rest_port = int(os.getenv("PORT", "8000"))
