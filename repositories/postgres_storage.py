@@ -7,7 +7,8 @@ from typing import Any, Dict, Optional
 from healthcare_sdk import HealthCareStorage
 from healthcare_sdk.contracts import STATUS_NORMALIZED, STATUS_STORED, MessageEnvelope
 from healthcare_sdk.repositories.base import Base
-from sqlalchemy import JSON, DateTime, String, Text, Enum as SAEnum
+from sqlalchemy import JSON, DateTime, String, Text
+from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
 
