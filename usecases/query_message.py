@@ -2,13 +2,14 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
+from healthcare_sdk import HealthCareStorage
 from healthcare_sdk.usecases import HealthCareUsecase
 
 
 class QueryMessageUsecase(HealthCareUsecase):
     """Retrieves a stored message envelope by ID."""
 
-    def __init__(self, storage) -> None:
+    def __init__(self, storage : HealthCareStorage) -> None:
         self._storage = storage
 
     def execute(self, message_id: str) -> Dict[str, Any]:

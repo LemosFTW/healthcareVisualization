@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from healthcare_sdk import HealthCareStorage
 from healthcare_sdk.contracts import MessageEnvelope, RawMessage
 from healthcare_sdk.usecases import HealthCareUsecase
 
@@ -11,7 +12,7 @@ class CommitMessageUsecase(HealthCareUsecase):
     without running the full decode/validate/normalize pipeline.
     """
 
-    def __init__(self, storage) -> None:
+    def __init__(self, storage : HealthCareStorage) -> None:
         self._storage = storage
 
     def execute(self, raw_message: RawMessage) -> MessageEnvelope:
