@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional  # noqa: F401
 
 from fastapi.responses import JSONResponse
 from healthcare_sdk.contracts import MessageEnvelope, RawMessage
@@ -82,6 +82,29 @@ def create_query_message_handler(usecase):
                 },
             )
         return JSONResponse(content=_serialize_stored(record), status_code=200)
+
+    return handler
+
+
+def create_list_messages_handler(usecase):
+    """Handler for GET /messages."""
+
+    async def handler(
+        page: int = 1,
+        page_size: int = 10,
+        review_status: Optional[str] = None,
+    ) -> JSONResponse:
+        records = usecase.execute(
+            page=page,
+            page_size=page_size,
+            review_status=review_status,
+        )
+        return JSONResponse(
+            content={"page": page, "page_size": page_size, "items": [
+                _serialize_stored(r) for r in records
+            ]},
+            status_code=200,
+        )
 
     return handler
 

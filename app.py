@@ -29,11 +29,17 @@ from tools import GeminiAiHelper
 from transport import MllpConnector
 from transport.messages_handler import (
     create_commit_message_handler,
+    create_list_messages_handler,
     create_process_message_handler,
     create_query_message_handler,
 )
 from transport.mllp_pipeline import create_mllp_pipeline_loop
-from usecases import CommitMessageUsecase, ProcessMessageUsecase, QueryMessageUsecase
+from usecases import (
+    CommitMessageUsecase,
+    ListMessagesUsecase,
+    ProcessMessageUsecase,
+    QueryMessageUsecase,
+)
 
 load_dotenv()
 
@@ -98,6 +104,7 @@ def bootstrap():
     )
     commit_usecase: HealthCareUsecase = CommitMessageUsecase(storage=storage)
     query_usecase: HealthCareUsecase = QueryMessageUsecase(storage=storage)
+    list_usecase: HealthCareUsecase = ListMessagesUsecase(storage=storage)
     components = register_components(
         adapters=[mllp_connector],
         usecases=[commit_usecase, query_usecase, process_usecase],
@@ -107,12 +114,19 @@ def bootstrap():
         normalizers=[normalizer],
         storages=[storage],
     )
-    return components, process_usecase, commit_usecase, query_usecase, mllp_connector
+    return (
+        components,
+        process_usecase,
+        commit_usecase,
+        query_usecase,
+        list_usecase,
+        mllp_connector,
+    )
 
 
 def run_mllp_worker() -> None:
     """Processo isolado: MLLP server + pipeline. Memória separada do REST."""
-    _components, process_usecase, _commit, _query, mllp = bootstrap()
+    _components, process_usecase, _commit, _query, _list, mllp = bootstrap()
     mllp.start_in_background()
     pipeline_loop = create_mllp_pipeline_loop(mllp, process_usecase)
     pipeline_loop()
@@ -126,10 +140,15 @@ def main():
     )
     mllp_process.start()
 
-    _components, process_usecase, commit_usecase, query_usecase, _mllp = bootstrap()
+    _components, process_usecase, commit_usecase, query_usecase, list_usecase, _mllp = (
+        bootstrap()
+    )
 
     rest_controller = RestController()
     _register_exception_handlers(rest_controller.app)
+    rest_controller.add_endpoint(
+        "/messages", "GET", create_list_messages_handler(list_usecase)
+    )
     rest_controller.add_endpoint(
         "/messages", "POST", create_process_message_handler(process_usecase)
     )

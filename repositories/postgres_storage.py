@@ -7,7 +7,7 @@ from typing import Any, Dict, Optional
 from healthcare_sdk import HealthCareStorage
 from healthcare_sdk.contracts import STATUS_NORMALIZED, STATUS_STORED, MessageEnvelope
 from healthcare_sdk.repositories.base import Base
-from sqlalchemy import JSON, DateTime, String, Text
+from sqlalchemy import JSON, DateTime, String, Text, select
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
@@ -123,6 +123,21 @@ class PostgreSqlStorage(HealthCareStorage):
                 session.commit()
                 return True
         return False
+
+    def list(
+        self,
+        page: int = 1,
+        page_size: int = 10,
+        review_status: Optional[str] = None,
+    ) -> list[Dict[str, Any]]:
+        with Session(self._engine) as session:
+            stmt = select(_HealthcareMessageLog)
+            if review_status is not None:
+                stmt = stmt.where(
+                    _HealthcareMessageLog.review_status == review_status
+                )
+            stmt = stmt.offset((page - 1) * page_size).limit(page_size)
+            return [row.to_dict() for row in session.scalars(stmt)]
 
     def delete(self, query: Dict[str, Any]) -> bool:
         with Session(self._engine) as session:

@@ -159,9 +159,13 @@ def test_bootstrap_function_runs_without_error():
     with _genai_mock_ctx(), patch.dict(os.environ, {"GEMINI_API_KEY": "test-key"}):
         from app import bootstrap
 
-        components, process_usecase, commit_usecase, query_usecase, mllp = bootstrap()
+        (
+            components, process_usecase, commit_usecase,
+            query_usecase, list_usecase, mllp,
+        ) = bootstrap()
     assert components is not None
     assert process_usecase is not None
     assert commit_usecase is not None
     assert query_usecase is not None
+    assert list_usecase is not None
     assert mllp is not None
