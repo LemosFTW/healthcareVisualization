@@ -7,7 +7,7 @@ from typing import Any, Dict, Optional
 from healthcare_sdk import HealthCareStorage
 from healthcare_sdk.contracts import STATUS_NORMALIZED, STATUS_STORED, MessageEnvelope
 from healthcare_sdk.repositories.base import Base
-from sqlalchemy import JSON, DateTime, String, Text
+from sqlalchemy import JSON, DateTime, String, Text, Enum as SAEnum
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
 
@@ -25,6 +25,9 @@ class _HealthcareMessageLog(Base):
     decoded_payload: Mapped[Optional[Any]] = mapped_column(JSON, nullable=True)
     normalized_payload: Mapped[Optional[Any]] = mapped_column(JSON, nullable=True)
     errors: Mapped[Optional[Any]] = mapped_column(JSON, nullable=True)
+    review_status: Mapped[Optional[str]] = mapped_column(
+        SAEnum("pending", "approved", name="review_status_enum"), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
@@ -52,6 +55,7 @@ class _HealthcareMessageLog(Base):
             decoded_payload=envelope.decoded_payload,
             normalized_payload=envelope.normalized_payload,
             errors=errors_data,
+            review_status=envelope.metadata.get("review_status"),
         )
 
     def to_dict(self) -> Dict[str, Any]:
@@ -64,6 +68,7 @@ class _HealthcareMessageLog(Base):
             "decoded_payload": self.decoded_payload,
             "normalized_payload": self.normalized_payload,
             "errors": self.errors,
+            "review_status": self.review_status,
             "created_at": self.created_at,
         }
 
