@@ -86,6 +86,35 @@ def create_query_message_handler(usecase):
     return handler
 
 
+def create_list_logs_handler(usecase):
+    """Handler for GET /logs."""
+
+    async def handler(
+        page: int = 1,
+        page_size: int = 10,
+        status: Optional[str] = None,
+    ) -> JSONResponse:
+        records = usecase.execute(page=page, page_size=page_size, status=status)
+        serialized = [
+            {
+                **r,
+                "created_at": r["created_at"].isoformat()
+                if hasattr(r.get("created_at"), "isoformat")
+                else str(r.get("created_at") or ""),
+                "updated_at": r["updated_at"].isoformat()
+                if hasattr(r.get("updated_at"), "isoformat")
+                else str(r.get("updated_at") or ""),
+            }
+            for r in records
+        ]
+        return JSONResponse(
+            content={"page": page, "page_size": page_size, "items": serialized},
+            status_code=200,
+        )
+
+    return handler
+
+
 def create_list_messages_handler(usecase):
     """Handler for GET /messages."""
 

@@ -13,3 +13,4 @@ claude.md
 todo.md
 *.db
 mllp_testing.py
+logs/*

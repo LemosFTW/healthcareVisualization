@@ -1,3 +1,4 @@
+import logging
 import multiprocessing
 import os
 
@@ -29,6 +30,7 @@ from tools import GeminiAiHelper
 from transport import MllpConnector
 from transport.messages_handler import (
     create_commit_message_handler,
+    create_list_logs_handler,
     create_list_messages_handler,
     create_process_message_handler,
     create_query_message_handler,
@@ -36,12 +38,25 @@ from transport.messages_handler import (
 from transport.mllp_pipeline import create_mllp_pipeline_loop
 from usecases import (
     CommitMessageUsecase,
+    ListLogsUsecase,
     ListMessagesUsecase,
     ProcessMessageUsecase,
     QueryMessageUsecase,
 )
 
 load_dotenv()
+
+os.makedirs("logs", exist_ok=True)
+_log_level = logging.getLevelName(os.getenv("LOG_LEVEL", "INFO"))
+_formatter = logging.Formatter(
+    fmt="%(asctime)s %(levelname)-8s %(name)s — %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+_file_handler = logging.FileHandler("logs/app.log", encoding="utf-8")
+_file_handler.setFormatter(_formatter)
+_console_handler = logging.StreamHandler()
+_console_handler.setFormatter(_formatter)
+logging.basicConfig(level=_log_level, handlers=[_file_handler, _console_handler])
 
 
 def _register_exception_handlers(app) -> None:
@@ -105,6 +120,7 @@ def bootstrap():
     commit_usecase: HealthCareUsecase = CommitMessageUsecase(storage=storage)
     query_usecase: HealthCareUsecase = QueryMessageUsecase(storage=storage)
     list_usecase: HealthCareUsecase = ListMessagesUsecase(storage=storage)
+    list_logs_usecase = ListLogsUsecase(storage=storage)
     components = register_components(
         adapters=[mllp_connector],
         usecases=[commit_usecase, query_usecase, process_usecase],
@@ -120,13 +136,14 @@ def bootstrap():
         commit_usecase,
         query_usecase,
         list_usecase,
+        list_logs_usecase,
         mllp_connector,
     )
 
 
 def run_mllp_worker() -> None:
     """Processo isolado: MLLP server + pipeline. Memória separada do REST."""
-    _components, process_usecase, _commit, _query, _list, mllp = bootstrap()
+    _components, process_usecase, _commit, _query, _list, _list_logs, mllp = bootstrap()
     mllp.start_in_background()
     pipeline_loop = create_mllp_pipeline_loop(mllp, process_usecase)
     pipeline_loop()
@@ -140,12 +157,16 @@ def main():
     )
     mllp_process.start()
 
-    _components, process_usecase, commit_usecase, query_usecase, list_usecase, _mllp = (
-        bootstrap()
-    )
+    (
+        _components, process_usecase, commit_usecase,
+        query_usecase, list_usecase, list_logs_usecase, _mllp,
+    ) = bootstrap()
 
     rest_controller = RestController()
     _register_exception_handlers(rest_controller.app)
+    rest_controller.add_endpoint(
+        "/logs", "GET", create_list_logs_handler(list_logs_usecase)
+    )
     rest_controller.add_endpoint(
         "/messages", "GET", create_list_messages_handler(list_usecase)
     )

@@ -7,6 +7,7 @@ from typing import Any, Dict, Optional
 from healthcare_sdk import HealthCareStorage
 from healthcare_sdk.contracts import STATUS_NORMALIZED, STATUS_STORED, MessageEnvelope
 from healthcare_sdk.repositories.base import Base
+from healthcare_sdk.repositories.messageLog import MessageLog
 from sqlalchemy import JSON, DateTime, String, Text, select
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import Mapped, Session, mapped_column
@@ -27,7 +28,8 @@ class _HealthcareMessageLog(Base):
     normalized_payload: Mapped[Optional[Any]] = mapped_column(JSON, nullable=True)
     errors: Mapped[Optional[Any]] = mapped_column(JSON, nullable=True)
     review_status: Mapped[Optional[str]] = mapped_column(
-        SAEnum("pending", "approved", name="review_status_enum"), nullable=True
+        SAEnum("pending", "approved", name="review_status_enum", native_enum=False),
+        nullable=True,
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -138,6 +140,29 @@ class PostgreSqlStorage(HealthCareStorage):
                 )
             stmt = stmt.offset((page - 1) * page_size).limit(page_size)
             return [row.to_dict() for row in session.scalars(stmt)]
+
+    def list_logs(
+        self,
+        page: int = 1,
+        page_size: int = 10,
+        status: Optional[str] = None,
+    ) -> list[Dict[str, Any]]:
+        with Session(self._engine) as session:
+            stmt = select(MessageLog)
+            if status is not None:
+                stmt = stmt.where(MessageLog.status == status)
+            stmt = stmt.offset((page - 1) * page_size).limit(page_size)
+            return [
+                {
+                    "id": row.id,
+                    "protocol": row.protocol,
+                    "status": row.status,
+                    "errors": row.errors,
+                    "created_at": row.created_at,
+                    "updated_at": row.updated_at,
+                }
+                for row in session.scalars(stmt)
+            ]
 
     def delete(self, query: Dict[str, Any]) -> bool:
         with Session(self._engine) as session:

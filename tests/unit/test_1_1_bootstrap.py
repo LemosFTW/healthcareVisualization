@@ -161,7 +161,7 @@ def test_bootstrap_function_runs_without_error():
 
         (
             components, process_usecase, commit_usecase,
-            query_usecase, list_usecase, mllp,
+            query_usecase, list_usecase, list_logs_usecase, mllp,
         ) = bootstrap()
     assert components is not None
     assert process_usecase is not None
