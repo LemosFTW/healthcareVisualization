@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import logging
 from typing import Any, Dict, List
 
 from healthcare_sdk import NormalizerTemplate
 from healthcare_sdk.errors import NormalizationError
+
+logger = logging.getLogger(__name__)
 
 
 class HealthcareMessageNormalizer(NormalizerTemplate):
@@ -93,18 +96,14 @@ class HealthcareMessageNormalizer(NormalizerTemplate):
         return normalized
 
     def _detect_anomalies(self, observations: List[Dict[str, Any]]) -> List[str]:
-        print(
-            f"Detecting anomalies in {len(observations)} observations via AI helper..."
-        )
+        logger.info("Detecting anomalies in %d observations via AI helper...", len(observations))  # noqa: E501
         prompt = self._build_anomaly_prompt(observations)
-        print(f"Anomaly detection prompt:\n{prompt}")
         try:
-            print("Sending prompt to AI helper...")
             response = self.aiHelper.generateResponse(prompt)
-            print(f"AI helper response:\n{response}")
+            logger.debug("AI helper response: %s", response)
             return self._parse_anomaly_response(response)
-        except Exception:
-            print("AI helper failed to analyze observations for anomalies.")
+        except Exception as exc:
+            logger.error("AI helper failed to analyze observations: %s", exc)
             return []
 
     def _build_anomaly_prompt(self, observations: List[Dict[str, Any]]) -> str:

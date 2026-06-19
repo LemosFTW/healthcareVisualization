@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import logging
 import os
 
 import httpx
 from healthcare_sdk import AiHelper
 
-_GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent"
+logger = logging.getLogger(__name__)
+
+_GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
 
 
 class GeminiAiHelper(AiHelper):
@@ -33,5 +36,5 @@ class GeminiAiHelper(AiHelper):
             resp.raise_for_status()
             return resp.json()["candidates"][0]["content"]["parts"][0]["text"]
         except Exception as exc:
-            print(f"Gemini API request failed: {exc}")
+            logger.error("Gemini API request failed: %s", exc)
             raise RuntimeError(f"Gemini API request failed: {exc}") from None

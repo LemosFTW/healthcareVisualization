@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import uuid
 from typing import Any, Dict, List, Optional  # noqa: F401
 
@@ -172,7 +173,7 @@ def create_process_message_handler(usecase):
             metadata=body.metadata or {},
             message_type=body.message_type,
         )
-        envelope = usecase.execute(raw)
+        envelope = await asyncio.to_thread(usecase.execute, raw)
         return JSONResponse(content=_serialize_envelope(envelope), status_code=200)
 
     return handler
