@@ -1,9 +1,11 @@
 import logging
 import multiprocessing
 import os
+import sys
 
 from dotenv import load_dotenv
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from healthcare_sdk import (
     Adapter,
@@ -45,6 +47,21 @@ from usecases import (
 )
 
 load_dotenv()
+
+# Windows ProactorEventLoop raises ConnectionResetError on socket.shutdown() when the
+# remote side closes the connection first — harmless, but pollutes the log as ERROR.
+if sys.platform == "win32":
+    from asyncio.proactor_events import _ProactorBasePipeTransport
+
+    _orig_call_connection_lost = _ProactorBasePipeTransport._call_connection_lost
+
+    def _call_connection_lost_silent(self, *args, **kwargs):
+        try:
+            _orig_call_connection_lost(self, *args, **kwargs)
+        except ConnectionResetError:
+            pass
+
+    _ProactorBasePipeTransport._call_connection_lost = _call_connection_lost_silent
 
 os.makedirs("logs", exist_ok=True)
 _log_level = logging.getLevelName(os.getenv("LOG_LEVEL", "INFO"))
@@ -163,6 +180,12 @@ def main():
     ) = bootstrap()
 
     rest_controller = RestController()
+    rest_controller.app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
     _register_exception_handlers(rest_controller.app)
     rest_controller.add_endpoint(
         "/logs", "GET", create_list_logs_handler(list_logs_usecase)
