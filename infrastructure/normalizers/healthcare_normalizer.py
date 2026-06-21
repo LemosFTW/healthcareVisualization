@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict, List
 
-from healthcare_sdk import NormalizerTemplate
+from healthcare_sdk import AiHelper, NormalizerTemplate
 from healthcare_sdk.errors import NormalizationError
 
 logger = logging.getLogger(__name__)
@@ -16,7 +16,7 @@ class HealthcareMessageNormalizer(NormalizerTemplate):
     AI helper set in self.aiHelper (NormalizerTemplate contract).
     """
 
-    def __init__(self, ai_helper=None) -> None:
+    def __init__(self, ai_helper : AiHelper | None = None) -> None:
         super().__init__()
         self.aiHelper = ai_helper
 
