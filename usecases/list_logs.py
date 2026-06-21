@@ -2,13 +2,13 @@ from __future__ import annotations
 
 from typing import Optional
 
-from repositories.postgres_storage import PostgreSqlStorage
+from healthcare_sdk import HealthCareStorage, HealthCareUsecase
 
 
-class ListLogsUsecase:
+class ListLogsUsecase(HealthCareUsecase):
     """Lists pipeline audit entries from message_log with pagination and filter."""
 
-    def __init__(self, storage: PostgreSqlStorage) -> None:
+    def __init__(self, storage: HealthCareStorage) -> None:
         self._storage = storage
 
     def execute(

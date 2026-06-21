@@ -137,7 +137,7 @@ def bootstrap():
     commit_usecase: HealthCareUsecase = CommitMessageUsecase(storage=storage)
     query_usecase: HealthCareUsecase = QueryMessageUsecase(storage=storage)
     list_usecase: HealthCareUsecase = ListMessagesUsecase(storage=storage)
-    list_logs_usecase = ListLogsUsecase(storage=storage)
+    list_logs_usecase: HealthCareUsecase = ListLogsUsecase(storage=storage)
     components = register_components(
         adapters=[mllp_connector],
         usecases=[commit_usecase, query_usecase, process_usecase],
