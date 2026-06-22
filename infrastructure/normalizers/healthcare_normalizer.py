@@ -10,13 +10,13 @@ logger = logging.getLogger(__name__)
 
 
 class HealthcareMessageNormalizer(NormalizerTemplate):
-    """Converts decoded HL7 v2.3 payloads to a standard internal format.
+    """Converts decoded HL7 v2.3 and FHIR payloads to a standard internal format.
 
     Clinical observations are optionally analysed for anomalies by the
     AI helper set in self.aiHelper (NormalizerTemplate contract).
     """
 
-    def __init__(self, ai_helper : AiHelper | None = None) -> None:
+    def __init__(self, ai_helper: AiHelper | None = None) -> None:
         super().__init__()
         self.aiHelper = ai_helper
 
@@ -27,6 +27,73 @@ class HealthcareMessageNormalizer(NormalizerTemplate):
                 context={"actual_type": type(decoded_payload).__name__},
             )
 
+        # --- FHIR branch ---
+        if decoded_payload.get("resourceType"):
+            resource_type = decoded_payload.get("resourceType", "")
+            resources = (
+                decoded_payload.get("resources", [])
+                if resource_type == "Bundle"
+                else [decoded_payload]
+            )
+
+            patient_id = ""
+            patient_name = ""
+            date_of_birth = ""
+            sex = ""
+            clinical_observations: List[Dict[str, Any]] = []
+
+            for res in resources:
+                if not isinstance(res, dict):
+                    continue
+                rtype = res.get("resourceType", "")
+                if rtype == "Patient":
+                    name_list = res.get("name") or []
+                    if name_list:
+                        first = name_list[0]
+                        given = " ".join(first.get("given") or [])
+                        family = first.get("family", "")
+                        patient_name = f"{given} {family}".strip()
+                    patient_id = res.get("id", "")
+                    date_of_birth = res.get("birthDate", "")
+                    sex = res.get("gender", "")
+                elif rtype == "Observation":
+                    vq = res.get("valueQuantity") or {}
+                    code_text = (res.get("code") or {}).get("text", "")
+                    clinical_observations.append({
+                        "identifier": f"{res.get('id', '')} - {code_text}".strip(" -"),
+                        "value": str(vq.get("value", "")),
+                        "units": vq.get("unit", ""),
+                        "reference_range": "",
+                        "abnormal_flags": "",
+                        "status": res.get("status", ""),
+                    })
+
+            normalized: Dict[str, Any] = {
+                "patient": {
+                    "id": patient_id,
+                    "name": patient_name,
+                    "date_of_birth": date_of_birth,
+                    "sex": sex,
+                },
+                "identifiers": {
+                    "message_control_id": decoded_payload.get("id", ""),
+                    "sending_application": "FHIR",
+                    "sending_facility": (decoded_payload.get("meta") or {}).get(
+                        "source", ""
+                    ),
+                },
+                "message_type": resource_type,
+                "datetime": "",
+                "clinical_observations": clinical_observations,
+                "warnings": [],
+            }
+
+            if self.aiHelper and clinical_observations:
+                normalized["warnings"] = self._detect_anomalies(clinical_observations)
+
+            return normalized
+
+        # --- HL7 v2 branch ---
         msh = decoded_payload.get("MSH", {})
         pid = decoded_payload.get("PID", {})
         obx_raw = decoded_payload.get("OBX", [])
@@ -36,7 +103,6 @@ class HealthcareMessageNormalizer(NormalizerTemplate):
             pid.get("patient_identifier_list", "") or pid.get("patient_id", "")
         ).strip()
 
-        # HL7 OBX observations
         clinical_observations = [
             {
                 "identifier": obx.get("observation_identifier", ""),
@@ -50,29 +116,7 @@ class HealthcareMessageNormalizer(NormalizerTemplate):
             if isinstance(obx, dict)
         ]
 
-        # FHIR Observation resources (Bundle entry or standalone) — supplement HL7 OBX
-        if not clinical_observations:
-            fhir_resources = decoded_payload.get("resources", [])
-            if isinstance(fhir_resources, list):
-                for res in fhir_resources:
-                    if (
-                        isinstance(res, dict)
-                        and res.get("resourceType") == "Observation"
-                    ):
-                        vq = res.get("valueQuantity") or {}
-                        code_text = (res.get("code") or {}).get("text", "")
-                        clinical_observations.append(
-                            {
-                                "identifier": f"{res.get('id', '')} - {code_text}",
-                                "value": str(vq.get("value", "")),
-                                "units": vq.get("unit", ""),
-                                "reference_range": "",
-                                "abnormal_flags": "",
-                                "status": res.get("status", ""),
-                            }
-                        )
-
-        normalized: Dict[str, Any] = {
+        normalized = {
             "patient": {
                 "id": patient_id,
                 "name": pid.get("patient_name", ""),
@@ -131,7 +175,7 @@ class HealthcareMessageNormalizer(NormalizerTemplate):
         for line in response.strip().splitlines():
             stripped = line.strip()
             if stripped.upper().startswith("ANOMALY:"):
-                text = stripped[len("ANOMALY:") :].strip()
+                text = stripped[len("ANOMALY:"):].strip()
                 if text:
                     warnings.append(text)
         print(f"Parsed anomalies: {warnings}")
