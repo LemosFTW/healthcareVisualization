@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 class HealthcareMessageNormalizer(NormalizerTemplate):
-    """Converts decoded HL7 v2.3 and FHIR payloads to a standard internal format.
+    """Converts decoded HL7 v2 and FHIR payloads to a standard internal format.
 
     Clinical observations are optionally analysed for anomalies by the
     AI helper set in self.aiHelper (NormalizerTemplate contract).

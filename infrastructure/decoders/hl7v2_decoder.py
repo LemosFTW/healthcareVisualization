@@ -5,7 +5,7 @@ from typing import Any, Dict, List
 from healthcare_sdk import Decoder, RawMessage
 from healthcare_sdk.errors import DecodeError
 
-# Field name maps for common HL7 v2.3 segments.
+# Field name maps for common HL7 v2 segments.
 # Indices are 0-based into fields[1:] (i.e., after stripping the segment name).
 # HL7 field number = index + 1 for most segments; MSH is MSH.(index+2) because MSH.1 is
 # the separator character itself and is never stored as a data field.
@@ -109,7 +109,7 @@ def _parse_segment(seg_name: str, fields: List[str]) -> Dict[str, Any]:
 
 
 class Hl7V2Decoder(Decoder):
-    """Decodes HL7 v2.3 messages from RawMessage into a structured segment dict.
+    """Decodes HL7 v2 messages from RawMessage into a structured segment dict.
 
     Raises DecodeError for malformed or empty payloads.
     """
